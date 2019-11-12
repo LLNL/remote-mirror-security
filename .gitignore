@@ -1,0 +1,5 @@
+# vim cruft
+*.sw*
+
+# cached gems
+vendor/*
