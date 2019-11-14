@@ -32,7 +32,8 @@ class Repo
   attr_reader :comments
 
   def in_org?
-    @trusted_orgs.include?(@name)
+    org = @name.split('/')[0]
+    @trusted_orgs.include?(org)
   end
 
   def mirror_info(git_config)
@@ -49,36 +50,41 @@ class Repo
     { name: mirror_name, is_mirror: !mirror_cfg.empty? }
   end
 
+  def branch_name_from_ref
+    @change_args[:ref_name].split('/')[-1]
+  end
+
   def protected_branch?(branch_name)
     false
   end
 
   def commit_info(sha)
     # stub. dates will usually come back from an api as a string
-    { date: Date.today.to_s }
+    { date: Date.today.to_s, protection_enabled: true }
   end
 
   def parse_repo_name(url)
     URI.parse(url.slice('.git')).path
   end
 
-  def init_collaborators(repo_name)
+  def init_collaborators
     {}
   end
 
-  def init_commits(change_args)
+  def init_commits
     # TODO: the "change_args" that get supplied change based on hook_type
     new_hash = {}
-    branch_name = change_args[:ref_name].split('/')[-1]
+    branch_name = branch_name_from_ref
     protected_branch = protected_branch?(branch_name)
-    [change_args[:current_sha], change_args[:future_sha]].each do |sha|
+    [@change_args[:current_sha], @change_args[:future_sha]].each do |sha|
+      info = commit_info(sha)
       new_hash[sha] = Commit.new(sha, branch_name,
-                                 commit_info(sha)[:date], protected_branch)
+                                 info[:date], protected_branch)
     end
     new_hash
   end
 
-  def init_comments(change_args)
+  def init_comments
     []
   end
 
@@ -90,9 +96,9 @@ class Repo
     @mirror = info[:is_mirror]
     @change_args = change_args
     @client = client
-    @collaborators = init_collaborators(@name)
-    @commits = init_commits(change_args)
-    @comments = init_comments(change_args)
     @trusted_orgs = trusted_orgs
+    @collaborators = init_collaborators
+    @commits = init_commits
+    @comments = init_comments
   end
 end
