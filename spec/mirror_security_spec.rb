@@ -1,5 +1,6 @@
 require 'inifile'
 require 'date'
+require 'set'
 
 require 'mirror_security'
 require 'repo'
@@ -9,7 +10,9 @@ require 'comment'
 
 class MockRepo < Repo
   def initialize(change_args = nil, collaborators = nil, commit = nil,
-                 comments = nil)
+                 comments = nil, trusted_orgs = nil)
+    @url = 'https://github.com/FooOrg/bar.git'
+    @name = 'FooOrg/bar'
     @change_args = change_args || {
       ref_name: '/refs/head/foo',
       current_sha: '0000000000000000000000000000000000000000',
@@ -22,6 +25,7 @@ class MockRepo < Repo
       'feature', '2011-04-14T16:00:49Z', true
     )
     @comments = comments || [Comment.new('foo', 'LGTM', Date.today.to_s)]
+    @trusted_orgs = trusted_orgs || ['FooOrg'].to_set
   end
 end
 

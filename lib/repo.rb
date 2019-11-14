@@ -1,3 +1,4 @@
+require 'set'
 require 'date'
 require 'uri'
 require 'inifile'
@@ -13,6 +14,7 @@ class Repo
 
   @signoff_body = 'lgtm'
   @git_config = nil
+  @trusted_orgs = Set.new
   @client = nil
   @name = ''
   @url = ''
@@ -28,6 +30,10 @@ class Repo
   attr_reader :collaborators
   attr_reader :commits
   attr_reader :comments
+
+  def in_org?
+    @trusted_orgs.include?(@name)
+  end
 
   def mirror_info(git_config)
     # pull all the remotes out of the config except the one marked "upstream"
@@ -76,7 +82,7 @@ class Repo
     []
   end
 
-  def initialize(change_args, git_config, client = nil)
+  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new)
     @git_config = git_config
     info = mirror_info(@git_config)
     @url = git_config[info[:name]]['url']
@@ -87,5 +93,6 @@ class Repo
     @collaborators = init_collaborators(@name)
     @commits = init_commits(change_args)
     @comments = init_comments(change_args)
+    @trusted_orgs = trusted_orgs
   end
 end
