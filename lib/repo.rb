@@ -64,7 +64,14 @@ class Repo
   end
 
   def parse_repo_name(url)
-    URI.parse(url.slice('.git')).path
+    # ugh, ruby's URI *won't* parse git ssh urls
+    # case examples:
+    #   git@github.com:LLNL/SSHSpawner.git
+    #   https://github.com/tgmachina/test-mirror.git
+    url.split(':')[-1]
+       .gsub('.git', '')
+       .split('/')[-2..-1]
+       .join('/')
   end
 
   def init_collaborators
