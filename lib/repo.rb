@@ -1,5 +1,5 @@
 require 'set'
-require 'date'
+require 'time'
 require 'uri'
 require 'inifile'
 
@@ -31,7 +31,7 @@ class Repo
   attr_reader :commits
   attr_reader :comments
 
-  def in_org?
+  def trusted_org?
     org = @name.split('/')[0]
     @trusted_orgs.include?(org)
   end
@@ -60,7 +60,7 @@ class Repo
 
   def commit_info(sha)
     # stub. dates will usually come back from an api as a string
-    { date: Date.today.to_s, protection_enabled: true }
+    { date: Time.now, protection_enabled: true }
   end
 
   def parse_repo_name(url)
@@ -95,7 +95,8 @@ class Repo
     []
   end
 
-  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new)
+  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
+                 signoff_body = 'lgtm')
     @git_config = git_config
     info = mirror_info(@git_config)
     @url = git_config[info[:name]]['url']
@@ -104,6 +105,7 @@ class Repo
     @change_args = change_args
     @client = client
     @trusted_orgs = trusted_orgs
+    @signoff_body = signoff_body
     @collaborators = init_collaborators
     @commits = init_commits
     @comments = init_comments

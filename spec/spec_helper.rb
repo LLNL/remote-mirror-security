@@ -98,3 +98,17 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 =end
 end
+
+require 'webmock/rspec'
+require 'vcr'
+VCR.configure do |c|
+  c.default_cassette_options = {
+    :serialize_with             => :json,
+    # TODO: Track down UTF-8 issue and remove
+    :preserve_exact_body_bytes  => true,
+    :decode_compressed_response => true,
+    :record                     => :once
+  }
+  c.cassette_library_dir = 'spec/cassettes'
+  c.hook_into :webmock
+end

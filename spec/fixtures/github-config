@@ -5,6 +5,6 @@
 	ignorecase = true
 	precomposeunicode = true
 [remote "origin"]
-	url = https://github.com/tgmachina/test-mirror.git
+	url = https://github.com/LLNL/Umpire.git
 	fetch = +refs/*:refs/*
 	mirror = true

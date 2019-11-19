@@ -15,24 +15,23 @@ class GitHubRepo < Repo
   end
 
   def commit_info(sha)
-    # stub. dates will usually come back from an api as a string
-    commit = client.commit(@name, sha)
+    commit = @client.commit(@name, sha)
     { date: commit.commit.author.date }
   end
 
   def init_collaborators
-    no_two_factor = Set.new
+    return {} unless trusted_org?
     org = @name.split('/')[0]
-    @client.organization_members(org, filter: '2fa_disabled').each do |member|
-      no_two_factor.add(member['login'])
-    end
-
-    @client.collabs(repo_name).to_h do |collab|
-      username = collab['login']
+    no_two_factor = @client.organization_members(org, filter: '2fa_disabled')
+                           .map{ |member| member[:login] }
+    collabs = {}
+    @client.collabs(@name).each do |collab|
+      username = collab[:login]
       trusted = @client.organization_member?(org, username) &&
                 !no_two_factor.include?(username)
-      [username, Collaborator.new(username, trusted)]
+      collabs[username] = Collaborator.new(username, trusted)
     end
+    collabs
   end
 
   def init_comments
@@ -42,9 +41,18 @@ class GitHubRepo < Repo
       @change_args[:future_sha],
       accept: Octokit::Preview::PREVIEW_TYPES[:commit_pulls]
     )
+    filtered_comments = []
     comments = pulls.first.rels[:comments].get.data
-    comments.reverse.collect do |comment|
-      Comment.new(comment.user.login, comment.body, comment.updated_at)
+    # comments can be edited by the PR opener and collabs: use original only
+    comments.reverse_each do |comment|
+      if comment.updated_at == comment.created_at
+        filtered_comments << Comment.new(
+                               comment.user.login,
+                               comment.body,
+                               comment.updated_at
+                             )
+      end
     end
+    filtered_comments
   end
 end
