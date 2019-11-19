@@ -1,4 +1,5 @@
 require 'date'
+require 'time'
 
 # defines a comment
 class Comment
@@ -13,6 +14,12 @@ class Comment
   def initialize(commenter, body, date)
     @commenter = commenter
     @body = body
-    @date = Date.parse(date)
+    if date.is_a?(Time)
+      @date = date
+    elsif date.is_a?(Date)
+      @date = date.to_time
+    elsif date.is_a?(String)
+      @date = Time.parse(date)
+    end
   end
 end

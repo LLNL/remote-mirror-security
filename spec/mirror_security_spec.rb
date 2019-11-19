@@ -1,5 +1,5 @@
 require 'inifile'
-require 'date'
+require 'time'
 require 'set'
 
 require 'mirror_security'
@@ -32,7 +32,7 @@ class MockRepo < Repo
       '6dcb09b5b57875f334f61aebed695e2e4193db5e',
       'feature', '2011-04-14T16:00:49Z', false
     )
-    @comments = comments || [Comment.new('foo', 'LGTM', Date.today.to_s)]
+    @comments = comments || [Comment.new('foo', 'LGTM', Time.now.to_s)]
     @trusted_orgs = trusted_orgs || ['FooOrg'].to_set
   end
 end
@@ -47,7 +47,7 @@ RSpec.describe MirrorSecurity, '#init' do
 
     it 'blocks unvetted changes' do
       future_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
-      comments = [Comment.new('foo', 'does not LGTM', Date.today.to_s)]
+      comments = [Comment.new('foo', 'does not LGTM', Time.now.to_s)]
       mock_repo = MockRepo.new(nil, nil, nil, nil, comments, nil)
       expect(mock_repo.vetted_change?(future_sha)).to be false
     end
@@ -56,7 +56,7 @@ RSpec.describe MirrorSecurity, '#init' do
       future_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
       commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', Date.today.to_s, true
+        'feature', Time.now.to_s, true
       )
       comments = [Comment.new('foo', 'LGTM', '2011-04-14T16:00:49Z')]
       mock_repo = MockRepo.new(nil, nil, nil, commit, comments, nil)
@@ -101,7 +101,7 @@ RSpec.describe MirrorSecurity, '#init' do
       )
       future_commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', Date.today.to_s, false
+        'feature', Time.now.to_s, false
       )
       mock_repo = MockRepo.new(nil, nil, current_commit, future_commit, [], nil)
       expect(mock_repo.trusted_change?).to be false
