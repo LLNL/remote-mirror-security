@@ -2,6 +2,7 @@ require 'set'
 require 'time'
 require 'uri'
 require 'inifile'
+require 'logger'
 
 require 'mirror_security'
 require 'collaborator'
@@ -25,11 +26,20 @@ class Repo
   @collaborators = {}
   @commits = {}
   @comments = []
+  @logger = nil
 
   attr_reader :mirror
   attr_reader :collaborators
   attr_reader :commits
   attr_reader :comments
+
+  attr_accessor :logger
+
+  def init_logger
+    @logger = Logger.new(STDERR)
+    @logger = Logger.new(STDOUT)
+    @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
+  end
 
   def trusted_org?
     org = @name.split('/')[0]
@@ -47,6 +57,7 @@ class Repo
     end
 
     mirror_name = mirror_cfg[0][0]
+    @logger.debug{ "Mirror name: " + mirror_name }
     { name: mirror_name, is_mirror: !mirror_cfg.empty? }
   end
 
@@ -82,9 +93,14 @@ class Repo
     # TODO: the "change_args" that get supplied change based on hook_type
     new_hash = {}
     branch_name = branch_name_from_ref
+    # TODO: need a way to find both branches--the branch from which changes
+    # come and the branch to which changes are going
     protected_branch = protected_branch?(branch_name)
+    @logger.debug{ 'Branch %s, protection %s' %
+                   [branch_name, protected_branch.to_s] }
     [@change_args[:current_sha], @change_args[:future_sha]].each do |sha|
       info = commit_info(sha)
+      @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
       new_hash[sha] = Commit.new(sha, branch_name,
                                  info[:date], protected_branch)
     end
@@ -97,6 +113,8 @@ class Repo
 
   def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
                  signoff_body = 'lgtm')
+    init_logger
+    @logger.debug("Starting repo initialization")
     @git_config = git_config
     info = mirror_info(@git_config)
     @url = git_config[info[:name]]['url']
@@ -109,5 +127,6 @@ class Repo
     @collaborators = init_collaborators
     @commits = init_commits
     @comments = init_comments
+    @logger.debug("Finished initializing repo")
   end
 end

@@ -14,9 +14,11 @@ module MirrorSecurity
   end
 
   def trusted_change?
+    current_sha = @change_args[:current_sha]
     future_sha = @change_args[:future_sha]
     return false unless trusted_org? && @collaborators.each_value(&:trusted)
-    return false unless @commits[future_sha].protections_enabled ||
+    return false unless (@commits[current_sha].protections_enabled &&
+                         @commits[future_sha].protections_enabled) ||
                         vetted_change?(future_sha)
     true
   end

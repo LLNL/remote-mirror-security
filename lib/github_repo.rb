@@ -24,11 +24,16 @@ class GitHubRepo < Repo
     org = @name.split('/')[0]
     no_two_factor = @client.organization_members(org, filter: '2fa_disabled')
                            .map{ |member| member[:login] }
+
     collabs = {}
     @client.collabs(@name).each do |collab|
       username = collab[:login]
       trusted = @client.organization_member?(org, username) &&
                 !no_two_factor.include?(username)
+      if !trusted
+        @logger.warn('User %s is either not in %s or has 2FA disabled!' %
+                     [username, org])
+      end
       collabs[username] = Collaborator.new(username, trusted)
     end
     collabs
@@ -54,5 +59,18 @@ class GitHubRepo < Repo
       end
     end
     filtered_comments
+  end
+
+  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
+                 signoff_body = 'lgtm')
+    begin
+      super
+    rescue Octokit::Unauthorized => err
+      @logger.error('Request to GitHub unauthorized: ' + err)
+    rescue Octokit::Forbidden => err
+      @logger.error('Request to GitHub forbidden: ' + err)
+    rescue Octokit::ServerError => err
+      @logger.error('Request to GitHub failed: ' + err)
+    end
   end
 end
