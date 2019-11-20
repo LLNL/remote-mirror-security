@@ -17,10 +17,10 @@ RSpec.describe GitHubRepo, '#init' do
   context 'creates a GitHub repo object' do
     it 'trusts changes to protected branches' do
       @change_args[:ref_name] = '/refs/head/develop'
-      allow(@client).to receive(:organization_members) {
+      allow(@client).to receive(:org_members) {
         [{ 'login': 'foo', }]
       }
-      allow(@client).to receive(:organization_member?) {
+      allow(@client).to receive(:org_member?) {
         true
       }
       allow(@client).to receive(:collabs) {
@@ -43,10 +43,10 @@ RSpec.describe GitHubRepo, '#init' do
     end
 
     it 'trusts vetted changes' do
-      allow(@client).to receive(:organization_members) {
+      allow(@client).to receive(:org_members) {
         [{ 'login': 'foo', }]
       }
-      allow(@client).to receive(:organization_member?) {
+      allow(@client).to receive(:org_member?) {
         true
       }
       allow(@client).to receive(:collabs) {
@@ -70,10 +70,10 @@ RSpec.describe GitHubRepo, '#init' do
     end
 
     it 'fails if a user has 2FA disabled' do
-      allow(@client).to receive(:organization_members) {
+      allow(@client).to receive(:org_members) {
         [{ 'login': 'mcfadden8', }]
       }
-      allow(@client).to receive(:organization_member?) {
+      allow(@client).to receive(:org_member?) {
         true
       }
       allow(@client).to receive(:collabs) {
@@ -97,10 +97,10 @@ RSpec.describe GitHubRepo, '#init' do
     end
 
     it 'fails if a user is not in the organization' do
-      allow(@client).to receive(:organization_members) {
+      allow(@client).to receive(:org_members) {
         [{ 'login': 'foo', }]
       }
-      allow(@client).to receive(:organization_member?) {
+      allow(@client).to receive(:org_member?) {
         false
       }
       allow(@client).to receive(:collabs) {
@@ -124,10 +124,10 @@ RSpec.describe GitHubRepo, '#init' do
     end
 
     it 'fails if the org is not in the trusted list' do
-      allow(@client).to receive(:organization_members) {
+      allow(@client).to receive(:org_members) {
         [{ 'login': 'foo', }]
       }
-      allow(@client).to receive(:organization_member?) {
+      allow(@client).to receive(:org_member?) {
         true
       }
       allow(@client).to receive(:collabs) {

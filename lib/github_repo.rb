@@ -22,17 +22,26 @@ class GitHubRepo < Repo
   def init_collaborators
     return {} unless trusted_org?
     org = @name.split('/')[0]
-    no_two_factor = @client.organization_members(org, filter: '2fa_disabled')
-                           .map{ |member| member[:login] }
+    begin
+      no_two_factor = @client.org_members(org, filter: '2fa_disabled')
+                             .map{ |member| member[:login] }
+    rescue Octokit::NotFound
+      @logger.error('Unable to query group membership for org %s' % org)
+      return {}
+    end
 
     collabs = {}
     @client.collabs(@name).each do |collab|
       username = collab[:login]
-      trusted = @client.organization_member?(org, username) &&
-                !no_two_factor.include?(username)
-      if !trusted
-        @logger.warn('User %s is either not in %s or has 2FA disabled!' %
-                     [username, org])
+      in_org = @client.org_member?(org, username)
+      two_factor_enabled = !no_two_factor.include?(username)
+      trusted = in_org &&
+                two_factor_enabled
+      if !in_org
+        @logger.warn('User %s is not in %s!' % [username, org])
+      end
+      if !two_factor_enabled
+        @logger.warn('User %s has 2FA disabled!' % username)
       end
       collabs[username] = Collaborator.new(username, trusted)
     end
@@ -47,14 +56,21 @@ class GitHubRepo < Repo
       accept: Octokit::Preview::PREVIEW_TYPES[:commit_pulls]
     )
     filtered_comments = []
-    comments = pulls.first.rels[:comments].get.data
-    # comments can be edited by the PR opener and collabs: use original only
+    begin
+      comments = pulls.first.rels[:comments].get.data
+    rescue NoMethodError
+      @logger.error('Unable to retrieve associated PR comments for %s' % @name)
+      return filtered_comments
+    end
+    # PR comments are done as issue comments. Issue comments only sort
+    # ascending...
     comments.reverse_each do |comment|
+      # comments can be edited: use un-edited comments only
       if comment.updated_at == comment.created_at
         filtered_comments << Comment.new(
                                comment.user.login,
                                comment.body,
-                               comment.updated_at
+                               comment.created_at
                              )
       end
     end
