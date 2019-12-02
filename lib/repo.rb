@@ -57,7 +57,7 @@ class Repo
     end
 
     mirror_name = mirror_cfg[0][0]
-    @logger.debug{ "Mirror name: " + mirror_name }
+    @logger.debug { 'Mirror name: ' + mirror_name }
     { name: mirror_name, is_mirror: !mirror_cfg.empty? }
   end
 
@@ -96,8 +96,8 @@ class Repo
     # TODO: need a way to find both branches--the branch from which changes
     # come and the branch to which changes are going
     protected_branch = protected_branch?(branch_name)
-    @logger.debug{ 'Branch %s, protection %s' %
-                   [branch_name, protected_branch.to_s] }
+    @logger.debug('Branch %s, protection %s' %
+                  [branch_name, protected_branch.to_s])
     [@change_args[:current_sha], @change_args[:future_sha]].each do |sha|
       info = commit_info(sha)
       @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
@@ -114,7 +114,7 @@ class Repo
   def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
                  signoff_body = 'lgtm')
     init_logger
-    @logger.debug("Starting repo initialization")
+    @logger.debug('Starting repo initialization')
     @git_config = git_config
     info = mirror_info(@git_config)
     @url = git_config[info[:name]]['url']
@@ -127,6 +127,6 @@ class Repo
     @collaborators = init_collaborators
     @commits = init_commits
     @comments = init_comments
-    @logger.debug("Finished initializing repo")
+    @logger.debug('Finished initializing repo')
   end
 end

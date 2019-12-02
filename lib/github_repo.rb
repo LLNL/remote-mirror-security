@@ -24,7 +24,7 @@ class GitHubRepo < Repo
     org = @name.split('/')[0]
     begin
       no_two_factor = @client.org_members(org, filter: '2fa_disabled')
-                             .map{ |member| member[:login] }
+                             .map { |member| member[:login] }
     rescue Octokit::NotFound
       @logger.error('Unable to query group membership for org %s' % org)
       return {}
@@ -37,12 +37,8 @@ class GitHubRepo < Repo
       two_factor_enabled = !no_two_factor.include?(username)
       trusted = in_org &&
                 two_factor_enabled
-      if !in_org
-        @logger.warn('User %s is not in %s!' % [username, org])
-      end
-      if !two_factor_enabled
-        @logger.warn('User %s has 2FA disabled!' % username)
-      end
+      @logger.warn('%s is not in %s!' % [username, org]) unless in_org
+      @logger.warn('%s has 2FA disabled!' % username) unless two_factor_enabled
       collabs[username] = Collaborator.new(username, trusted)
     end
     collabs
@@ -66,13 +62,12 @@ class GitHubRepo < Repo
     # ascending...
     comments.reverse_each do |comment|
       # comments can be edited: use un-edited comments only
-      if comment.updated_at == comment.created_at
-        filtered_comments << Comment.new(
-                               comment.user.login,
-                               comment.body,
-                               comment.created_at
-                             )
-      end
+      next unless comment.updated_at == comment.created_at
+      filtered_comments << Comment.new(
+        comment.user.login,
+        comment.body,
+        comment.created_at
+      )
     end
     filtered_comments
   end
