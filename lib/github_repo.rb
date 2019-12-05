@@ -4,7 +4,8 @@ require 'octokit'
 
 # GitHub specific repo
 class GitHubRepo < Repo
-  def protected_branch?(branch_name)
+  def protected_branch?
+    branch_name = branch_name_from_ref
     repo = @client.repo(@name)
     branches = repo.rels[:branches].get.data
     branches.any? do |b|

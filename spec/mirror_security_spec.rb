@@ -9,8 +9,13 @@ require 'commit'
 require 'comment'
 
 class MockRepo < Repo
+  def protected_branch?
+    @branch_protected
+  end
+
   def initialize(change_args = nil, collaborators = nil, current_commit = nil,
-                 future_commit = nil, comments = nil, trusted_orgs = nil)
+                 future_commit = nil, comments = nil, trusted_orgs = nil,
+                 branch_protected = false)
     @url = 'https://github.com/FooOrg/bar.git'
     @name = 'FooOrg/bar'
     @signoff_body = 'lgtm'
@@ -26,14 +31,15 @@ class MockRepo < Repo
     @commits = {}
     @commits[@change_args[:current_sha]] = current_commit || Commit.new(
       '0000000000000000000000000000000000000000',
-      'develop', '2011-01-14T16:00:49Z', true
+      '2011-01-14T16:00:49Z'
     )
     @commits[@change_args[:future_sha]] = future_commit || Commit.new(
       '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-      'feature', '2011-04-14T16:00:49Z', false
+      '2011-04-14T16:00:49Z'
     )
     @comments = comments || [Comment.new('foo', 'LGTM', Time.now.to_s)]
     @trusted_orgs = trusted_orgs || ['FooOrg'].to_set
+    @branch_protected = branch_protected
   end
 end
 
@@ -56,7 +62,7 @@ RSpec.describe MirrorSecurity, '#init' do
       future_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
       commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', Time.now.to_s, true
+        Time.now.to_s
       )
       comments = [Comment.new('foo', 'LGTM', '2011-04-14T16:00:49Z')]
       mock_repo = MockRepo.new(nil, nil, nil, commit, comments, nil)
@@ -79,16 +85,16 @@ RSpec.describe MirrorSecurity, '#init' do
     it 'trusts unvetted changes in protected branches' do
       future_commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', '2011-04-14T16:00:49Z', true
+        '2011-04-14T16:00:49Z'
       )
-      mock_repo = MockRepo.new(nil, nil, nil, future_commit, [], nil)
+      mock_repo = MockRepo.new(nil, nil, nil, future_commit, [], nil, true)
       expect(mock_repo.trusted_change?).to be true
     end
 
     it 'trusts vetted changes from unprotected branches' do
       future_commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', '2011-04-14T16:00:49Z', false
+        '2011-04-14T16:00:49Z'
       )
       mock_repo = MockRepo.new(nil, nil, nil, future_commit, nil, nil)
       expect(mock_repo.trusted_change?).to be true
@@ -97,11 +103,11 @@ RSpec.describe MirrorSecurity, '#init' do
     it 'does not trust unvetted changes from unprotected branches' do
       current_commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', '2011-04-14T16:00:49Z', false
+        '2011-04-14T16:00:49Z'
       )
       future_commit = Commit.new(
         '6dcb09b5b57875f334f61aebed695e2e4193db5e',
-        'feature', Time.now.to_s, false
+        Time.now.to_s
       )
       mock_repo = MockRepo.new(nil, nil, current_commit, future_commit, [], nil)
       expect(mock_repo.trusted_change?).to be false

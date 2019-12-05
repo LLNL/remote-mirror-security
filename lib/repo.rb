@@ -65,7 +65,8 @@ class Repo
     @change_args[:ref_name].split('/')[-1]
   end
 
-  def protected_branch?(branch_name)
+  def protected_branch?
+    branch_name = branch_name_from_ref
     false
   end
 
@@ -92,17 +93,10 @@ class Repo
   def init_commits
     # TODO: the "change_args" that get supplied change based on hook_type
     new_hash = {}
-    branch_name = branch_name_from_ref
-    # TODO: need a way to find both branches--the branch from which changes
-    # come and the branch to which changes are going
-    protected_branch = protected_branch?(branch_name)
-    @logger.debug('Branch %s, protection %s' %
-                  [branch_name, protected_branch.to_s])
     [@change_args[:current_sha], @change_args[:future_sha]].each do |sha|
       info = commit_info(sha)
       @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
-      new_hash[sha] = Commit.new(sha, branch_name,
-                                 info[:date], protected_branch)
+      new_hash[sha] = Commit.new(sha, info[:date])
     end
     new_hash
   end
