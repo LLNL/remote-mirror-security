@@ -15,13 +15,13 @@ class Repo
 
   @signoff_body = 'lgtm'
   @git_config = nil
-  @trusted_orgs = Set.new
   @client = nil
   @name = ''
   @url = ''
   @mirror = false
   # TODO: replace with enum
   @hook_type = 'update'
+  @org_members = {}
   @change_args = {}
   @collaborators = {}
   @commits = {}
@@ -32,6 +32,7 @@ class Repo
   attr_reader :collaborators
   attr_reader :commits
   attr_reader :comments
+  attr_reader :org_members
 
   attr_accessor :logger
 
@@ -39,11 +40,6 @@ class Repo
     @logger = Logger.new(STDERR)
     @logger = Logger.new(STDOUT)
     @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
-  end
-
-  def trusted_org?
-    org = @name.split('/')[0]
-    @trusted_orgs.include?(org)
   end
 
   def mirror_info(git_config)
@@ -86,6 +82,10 @@ class Repo
        .join('/')
   end
 
+  def init_trusted_org_members
+    {}
+  end
+
   def init_collaborators
     {}
   end
@@ -105,8 +105,8 @@ class Repo
     []
   end
 
-  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
-                 signoff_body = 'lgtm')
+  def initialize(change_args, git_config, client = nil, external_client = nil,
+                 trusted_org = '', signoff_body = 'lgtm')
     init_logger
     @logger.debug('Starting repo initialization')
     @git_config = git_config
@@ -116,8 +116,10 @@ class Repo
     @mirror = info[:is_mirror]
     @change_args = change_args
     @client = client
-    @trusted_orgs = trusted_orgs
+    @external_client = external_client || client
+    @trusted_org = trusted_org
     @signoff_body = signoff_body
+    @org_members = init_trusted_org_members
     @collaborators = init_collaborators
     @commits = init_commits
     @comments = init_comments

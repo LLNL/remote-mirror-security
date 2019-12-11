@@ -14,7 +14,7 @@ class MockRepo < Repo
   end
 
   def initialize(change_args = nil, collaborators = nil, current_commit = nil,
-                 future_commit = nil, comments = nil, trusted_orgs = nil,
+                 future_commit = nil, comments = nil, trusted_org = nil,
                  branch_protected = false)
     @url = 'https://github.com/FooOrg/bar.git'
     @name = 'FooOrg/bar'
@@ -28,6 +28,7 @@ class MockRepo < Repo
     if @collaborators.empty?
       @collaborators['foo'] = Collaborator.new('foo', true)
     end
+    @org_members = @collaborators
     @commits = {}
     @commits[@change_args[:current_sha]] = current_commit || Commit.new(
       '0000000000000000000000000000000000000000',
@@ -38,7 +39,7 @@ class MockRepo < Repo
       '2011-04-14T16:00:49Z'
     )
     @comments = comments || [Comment.new('foo', 'LGTM', Time.now.to_s)]
-    @trusted_orgs = trusted_orgs || ['FooOrg'].to_set
+    @trusted_org = trusted_org || 'FooOrg'
     @branch_protected = branch_protected
   end
 end
@@ -47,7 +48,7 @@ RSpec.describe MirrorSecurity, '#init' do
   context 'trusted collaborator' do
     it 'vets changes' do
       future_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
-      mock_repo = MockRepo.new
+      mock_repo = MockRepo.new(nil, nil, nil, nil, nil, nil, true)
       expect(mock_repo.vetted_change?(future_sha)).to be true
     end
 

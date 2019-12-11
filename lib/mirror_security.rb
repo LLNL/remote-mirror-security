@@ -4,8 +4,8 @@ module MirrorSecurity
     commit_date = @commits[future_sha].date
     @comments.each do |comment|
       commenter = comment.commenter
-      next unless @collaborators[commenter] &&
-                  @collaborators[commenter].trusted
+      next unless @org_members[commenter] &&
+                  @org_members[commenter].trusted
       next unless comment.body.casecmp(@signoff_body).zero?
       next unless comment.date > commit_date
       return true
@@ -15,8 +15,9 @@ module MirrorSecurity
 
   def trusted_change?
     future_sha = @change_args[:future_sha]
-    return false unless trusted_org? && @collaborators.each_value(&:trusted)
-    return false unless protected_branch? || vetted_change?(future_sha)
-    true
+    return true if protected_branch? && !@collaborators.empty? &&
+                   @collaborators.all? { |_, v| v.trusted }
+    return true if vetted_change?(future_sha)
+    false
   end
 end

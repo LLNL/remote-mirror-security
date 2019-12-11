@@ -6,8 +6,11 @@ require 'octokit'
 class GitHubRepo < Repo
   def protected_branch?
     branch_name = branch_name_from_ref
-    repo = @client.repo(@name)
-    branches = repo.rels[:branches].get.data
+    branches = @client.commit_branches(
+      @name,
+      @change_args[:future_sha],
+      accept: Octokit::Preview::PREVIEW_TYPES[:commit_branches]
+    )
     branches.any? do |b|
       b.protected && b.name == branch_name
     end
@@ -18,26 +21,33 @@ class GitHubRepo < Repo
     { date: commit.commit.author.date }
   end
 
-  def init_collaborators
-    return {} unless trusted_org?
-    org = @name.split('/')[0]
+  def init_trusted_org_members
+    members = {}
     begin
-      no_two_factor = @client.org_members(org, filter: '2fa_disabled')
-                             .map { |member| member[:login] }
+      no_two_factor = @client.org_members(@trusted_org, filter: '2fa_disabled')
+                             .map { |member| member[:login] }.to_set
+      @client.org_members(@trusted_org).each do |member|
+        username = member[:login]
+        members[username] = Collaborator.new(
+          username,
+          !no_two_factor.include?(username)
+        )
+      end
     rescue Octokit::NotFound
       @logger.error('Unable to query group membership for org %s' % org)
-      return {}
     end
+    members
+  end
 
+  def init_collaborators
     collabs = {}
-    @client.collabs(@name).each do |collab|
+    @external_client.collabs(@name).each do |collab|
       username = collab[:login]
-      in_org = @client.org_member?(org, username)
-      two_factor_enabled = !no_two_factor.include?(username)
-      trusted = in_org &&
-                two_factor_enabled
-      @logger.warn('%s is not in %s!' % [username, org]) unless in_org
-      @logger.warn('%s has 2FA disabled!' % username) unless two_factor_enabled
+      in_org = @org_members[username] ? true : false
+      in_org || @logger.warn('%s is not in %s!' % [username, @trusted_org])
+      two_factor_enabled = in_org && @org_members[username].trusted
+      two_factor_enabled || @logger.warn('%s has 2FA disabled!' % username)
+      trusted = in_org && two_factor_enabled
       collabs[username] = Collaborator.new(username, trusted)
     end
     collabs
@@ -71,16 +81,16 @@ class GitHubRepo < Repo
     filtered_comments
   end
 
-  def initialize(change_args, git_config, client = nil, trusted_orgs = Set.new,
-                 signoff_body = 'lgtm')
+  def initialize(change_args, git_config, client = nil, external_client = nil,
+                 trusted_org = '', signoff_body = 'lgtm')
     begin
       super
     rescue Octokit::Unauthorized => err
-      @logger.error('Request to GitHub unauthorized: ' + err)
+      @logger.error('Request to GitHub unauthorized: ' + err.to_s)
     rescue Octokit::Forbidden => err
-      @logger.error('Request to GitHub forbidden: ' + err)
+      @logger.error('Request to GitHub forbidden: ' + err.to_s)
     rescue Octokit::ServerError => err
-      @logger.error('Request to GitHub failed: ' + err)
+      @logger.error('Request to GitHub failed: ' + err.to_s)
     end
   end
 end
