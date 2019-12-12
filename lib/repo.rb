@@ -14,21 +14,17 @@ class Repo
   include MirrorSecurity
 
   @signoff_body = 'lgtm'
-  @git_config = nil
   @client = nil
   @name = ''
-  @url = ''
-  @mirror = false
+  @logger = nil
   # TODO: replace with enum
   @hook_type = 'update'
+  @hook_args = {}
   @org_members = {}
-  @change_args = {}
   @collaborators = {}
   @commits = {}
   @comments = []
-  @logger = nil
 
-  attr_reader :mirror
   attr_reader :collaborators
   attr_reader :commits
   attr_reader :comments
@@ -42,23 +38,8 @@ class Repo
     @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
   end
 
-  def mirror_info(git_config)
-    # pull all the remotes out of the config except the one marked "upstream"
-    mirror_cfg = git_config.select do |k, v|
-      k.include?('remote') && !k.include?('upstream') && v.include?('mirror')
-    end
-
-    if mirror_cfg.size > 1
-      raise ArgumentError, 'too many mirrors configured', caller
-    end
-
-    mirror_name = mirror_cfg[0][0]
-    @logger.debug { 'Mirror name: ' + mirror_name }
-    { name: mirror_name, is_mirror: !mirror_cfg.empty? }
-  end
-
   def branch_name_from_ref
-    @change_args[:ref_name].split('/')[-1]
+    @hook_args[:ref_name].split('/')[-1]
   end
 
   def protected_branch?
@@ -68,18 +49,7 @@ class Repo
 
   def commit_info(sha)
     # stub. dates will usually come back from an api as a string
-    { date: Time.now, protection_enabled: true }
-  end
-
-  def parse_repo_name(url)
-    # ugh, ruby's URI *won't* parse git ssh urls
-    # case examples:
-    #   git@github.com:LLNL/SSHSpawner.git
-    #   https://github.com/tgmachina/test-mirror.git
-    url.split(':')[-1]
-       .gsub('.git', '')
-       .split('/')[-2..-1]
-       .join('/')
+    { date: Time.now }
   end
 
   def init_trusted_org_members
@@ -90,10 +60,14 @@ class Repo
     {}
   end
 
+  def init_comments
+    []
+  end
+
   def init_commits
-    # TODO: the "change_args" that get supplied change based on hook_type
+    # TODO: the "hook_args" that get supplied change based on hook_type
     new_hash = {}
-    [@change_args[:current_sha], @change_args[:future_sha]].each do |sha|
+    [@hook_args[:current_sha], @hook_args[:future_sha]].each do |sha|
       info = commit_info(sha)
       @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
       new_hash[sha] = Commit.new(sha, info[:date])
@@ -101,28 +75,25 @@ class Repo
     new_hash
   end
 
-  def init_comments
-    []
-  end
-
-  def initialize(change_args, git_config, client = nil, external_client = nil,
-                 trusted_org = '', signoff_body = 'lgtm')
-    init_logger
-    @logger.debug('Starting repo initialization')
-    @git_config = git_config
-    info = mirror_info(@git_config)
-    @url = git_config[info[:name]]['url']
-    @name = parse_repo_name(@url)
-    @mirror = info[:is_mirror]
-    @change_args = change_args
-    @client = client
-    @external_client = external_client || client
-    @trusted_org = trusted_org
-    @signoff_body = signoff_body
+  def init_remote_info
+    # initialize all the info needed from a remote to satisfy the
+    # MirrorSecurity module
     @org_members = init_trusted_org_members
     @collaborators = init_collaborators
     @commits = init_commits
     @comments = init_comments
+  end
+
+  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm')
+    init_logger
+    @logger.debug('Starting repo initialization')
+    @hook_args = hook_args
+    @name = @hook_args[:repo_name]
+    @client = clients[:main]
+    @external_client = clients[:external] || clients[:main]
+    @trusted_org = trusted_org
+    @signoff_body = signoff_body
+    init_remote_info
     @logger.debug('Finished initializing repo')
   end
 end

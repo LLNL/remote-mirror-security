@@ -1,0 +1,12 @@
+{
+    "repo_types": {
+        "github": {
+        "trusted_org": "Foo",
+        "signoff_body": "LGTM",
+            "access_tokens": {
+                "main": "",
+                "external": ""
+            }
+        }
+    }
+}

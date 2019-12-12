@@ -14,7 +14,7 @@ module MirrorSecurity
   end
 
   def trusted_change?
-    future_sha = @change_args[:future_sha]
+    future_sha = @hook_args[:future_sha]
     return true if protected_branch? && !@collaborators.empty? &&
                    @collaborators.all? { |_, v| v.trusted }
     return true if vetted_change?(future_sha)

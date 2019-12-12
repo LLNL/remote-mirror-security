@@ -1,0 +1,12 @@
+{
+    "repo_types": {
+        "github": {
+        "trusted_org": "LLNL",
+        "signoff_body": "LGTM",
+            "access_tokens": {
+                "main": "TOKEN_GOES_HERE",
+                "external": "TOKEN_GOES_HERE"
+            }
+        }
+    }
+}

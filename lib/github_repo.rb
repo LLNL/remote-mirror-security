@@ -8,7 +8,7 @@ class GitHubRepo < Repo
     branch_name = branch_name_from_ref
     branches = @client.commit_branches(
       @name,
-      @change_args[:future_sha],
+      @hook_args[:future_sha],
       accept: Octokit::Preview::PREVIEW_TYPES[:commit_branches]
     )
     branches.any? do |b|
@@ -57,7 +57,7 @@ class GitHubRepo < Repo
     @client.auto_paginate = true
     pulls = @client.commit_pulls(
       @name,
-      @change_args[:future_sha],
+      @hook_args[:future_sha],
       accept: Octokit::Preview::PREVIEW_TYPES[:commit_pulls]
     )
     filtered_comments = []
@@ -81,8 +81,7 @@ class GitHubRepo < Repo
     filtered_comments
   end
 
-  def initialize(change_args, git_config, client = nil, external_client = nil,
-                 trusted_org = '', signoff_body = 'lgtm')
+  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm')
     begin
       super
     rescue Octokit::Unauthorized => err
