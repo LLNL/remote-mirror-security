@@ -42,14 +42,18 @@ class GitHubRepo < Repo
 
   def init_collaborators
     collabs = {}
-    @external_client.collabs(@name).each do |collab|
-      username = collab[:login]
-      in_org = @org_members[username] ? true : false
-      in_org || @logger.warn('%s is not in %s!' % [username, @trusted_org])
-      two_factor_enabled = in_org && @org_members[username].trusted
-      two_factor_enabled || @logger.warn('%s has 2FA disabled!' % username)
-      trusted = in_org && two_factor_enabled
-      collabs[username] = Collaborator.new(username, trusted)
+    begin
+      @external_client.collabs(@name).each do |collab|
+        username = collab[:login]
+        in_org = @org_members[username] ? true : false
+        in_org || @logger.warn('%s is not in %s!' % [username, @trusted_org])
+        two_factor_enabled = in_org && @org_members[username].trusted
+        two_factor_enabled || @logger.warn('%s has 2FA disabled!' % username)
+        trusted = in_org && two_factor_enabled
+        collabs[username] = Collaborator.new(username, trusted)
+      end
+    rescue Octokit::Unauthorized
+      @logger.warn('Unable to query collaborators for %s' % @name)
     end
     collabs
   end
