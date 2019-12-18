@@ -11,6 +11,7 @@ class SecureMirror
   @logger = nil
 
   attr_reader :repo
+  attr_reader :logger
 
   def init_logger(log_file)
     @logger = Logger.new(log_file)
@@ -96,7 +97,7 @@ class SecureMirror
 end
 
 def evaluate_changes(config_file: 'config.json',
-                     git_config_file: __dir__ + '/config',
+                     git_config_file: Dir.pwd + '/config',
                      log_file: 'mirror.log')
   # the environment variables are provided by the git update hook
   hook_args = {
@@ -105,18 +106,24 @@ def evaluate_changes(config_file: 'config.json',
     future_sha: ARGV[2]
   }
 
-  sm = SecureMirror.new(hook_args, config_file, git_config_file, log_file)
+  begin
+    sm = SecureMirror.new(hook_args, config_file, git_config_file, log_file)
 
-  # if this is a brand new repo, or not a mirror allow the import
-  if sm.new_repo? || !sm.mirror?
-    return 0
+    # if this is a brand new repo, or not a mirror allow the import
+    if sm.new_repo? || !sm.mirror?
+      return 0
+    end
+
+    # fail on invalid git config
+    return 1 if sm.misconfigured?
+
+    # if repo initialization was successful and we trust the change, allow it
+    return 0 if sm.repo && sm.repo.trusted_change?
+  rescue StandardError => err
+    # if anything goes wrong, cancel the changes
+    sm.logger.error(err)
+    return 1
   end
 
-  # fail on invalid git config
-  return 1 if sm.misconfigured?
-
-  # if repo initialization was successful and we trust the change, allow it
-  return 0 if sm.repo && sm.repo.trusted_change?
-
-  return 1
+  1
 end
