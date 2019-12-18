@@ -32,12 +32,6 @@ class Repo
 
   attr_accessor :logger
 
-  def init_logger
-    @logger = Logger.new(STDERR)
-    @logger = Logger.new(STDOUT)
-    @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
-  end
-
   def branch_name_from_ref
     @hook_args[:ref_name].split('/')[-1]
   end
@@ -84,8 +78,16 @@ class Repo
     @comments = init_comments
   end
 
-  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm')
-    init_logger
+  def collabs_trusted?
+    trusted = !@collaborators.empty? && @collaborators.all? { |_, v| v.trusted }
+    @logger.info('Collaborators on repo %s are %s' %
+                 [@name, trusted ? 'trusted' : 'not trusted'])
+    trusted
+  end
+
+  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm',
+                 logger: Logger.new(STDOUT))
+    @logger = logger
     @logger.debug('Starting repo initialization')
     @hook_args = hook_args
     @name = @hook_args[:repo_name]

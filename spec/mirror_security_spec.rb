@@ -1,5 +1,5 @@
 require 'time'
-
+require 'logger'
 require 'mirror_security'
 require 'repo'
 require 'collaborator'
@@ -22,6 +22,7 @@ class MockRepo < Repo
 
   def initialize
     # defaults to vetted changes in an unprotected branch
+    @logger = Logger.new(STDOUT)
     @signoff_body = 'lgtm'
     @hook_args = {
       ref_name: '/refs/head/foo',

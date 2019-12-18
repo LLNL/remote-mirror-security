@@ -1,4 +1,5 @@
 require 'repo'
+require 'logger'
 require 'collaborator'
 require 'octokit'
 
@@ -81,7 +82,8 @@ class GitHubRepo < Repo
     filtered_comments
   end
 
-  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm')
+  def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm',
+                 logger: Logger.new(STDOUT))
     begin
       super
     rescue Octokit::Unauthorized => err

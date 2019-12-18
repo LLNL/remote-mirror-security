@@ -1,4 +1,5 @@
 require 'json'
+require 'logger'
 require 'inifile'
 require 'octokit'
 
@@ -7,8 +8,14 @@ class SecureMirror
   @repo = nil
   @config = nil
   @git_config = nil
+  @logger = nil
 
   attr_reader :repo
+
+  def init_logger(log_file)
+    @logger = Logger.new(log_file)
+    @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
+  end
 
   def new_repo?
     @git_config.nil?
@@ -63,7 +70,8 @@ class SecureMirror
     GitHubRepo.new(@hook_args,
                    clients: clients,
                    trusted_org: config[:trusted_org],
-                   signoff_body: config[:signoff_body])
+                   signoff_body: config[:signoff_body],
+                   logger: @logger)
   end
 
   def repo_from_config
@@ -73,12 +81,13 @@ class SecureMirror
     end
   end
 
-  def initialize(hook_args, config_file, git_config_file)
+  def initialize(hook_args, config_file, git_config_file, log_file)
     # `pwd` for the hook will be the git directory itself
     conf = File.open(config_file)
     @config = JSON.parse(conf.read, symbolize_names: true)
     @git_config = IniFile.load(git_config_file)
     return unless @git_config
+    init_logger(log_file)
     init_mirror_info
     @hook_args = hook_args
     @hook_args[:repo_name] = name
@@ -87,18 +96,21 @@ class SecureMirror
 end
 
 def evaluate_changes(config_file: 'config.json',
-                     git_config_file: __dir__ + '/config')
+                     git_config_file: __dir__ + '/config',
+                     log_file: 'mirror.log')
   # the environment variables are provided by the git update hook
   hook_args = {
-    ref_name: ENV[0],
-    current_sha: ENV[1],
-    future_sha: ENV[2]
+    ref_name: ARGV[0],
+    current_sha: ARGV[1],
+    future_sha: ARGV[2]
   }
 
-  sm = SecureMirror.new(hook_args, config_file, git_config_file)
+  sm = SecureMirror.new(hook_args, config_file, git_config_file, log_file)
 
   # if this is a brand new repo, or not a mirror allow the import
-  return 0 if sm.new_repo? || !sm.mirror?
+  if sm.new_repo? || !sm.mirror?
+    return 0
+  end
 
   # fail on invalid git config
   return 1 if sm.misconfigured?

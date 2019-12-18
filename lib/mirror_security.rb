@@ -8,6 +8,8 @@ module MirrorSecurity
                   @org_members[commenter].trusted
       next unless comment.body.casecmp(@signoff_body).zero?
       next unless comment.date > commit_date
+      @logger.info('Changes in commit %s vetted by %s' %
+                   [future_sha, commenter])
       return true
     end
     false
@@ -15,8 +17,7 @@ module MirrorSecurity
 
   def trusted_change?
     future_sha = @hook_args[:future_sha]
-    return true if protected_branch? && !@collaborators.empty? &&
-                   @collaborators.all? { |_, v| v.trusted }
+    return true if protected_branch? && collabs_trusted?
     return true if vetted_change?(future_sha)
     false
   end

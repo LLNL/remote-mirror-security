@@ -12,6 +12,7 @@ RSpec.describe SecureMirror, '#init' do
     }
     @config_file = __dir__ + '/fixtures/config.json'
     @git_config_file = __dir__ + '/fixtures/github-config'
+    @log_file = '/tmp/mirror.log'
     @unsupported_git_config_file = __dir__ + '/fixtures/unsupported-config'
     @missing_file = '/tmp/nonexistent'
   end
@@ -19,7 +20,8 @@ RSpec.describe SecureMirror, '#init' do
   context 'creates a SecureMirror object' do
     it 'reads in various config properties' do
       allow(GitHubRepo).to receive(:new) { {} }
-      sm = SecureMirror.new(@hook_args, @config_file, @git_config_file)
+      sm = SecureMirror.new(@hook_args, @config_file, @git_config_file,
+                            @log_file)
       expect(sm)
       expect(sm.name).to eq(@repo_name)
       expect(sm.misconfigured?).to be(false)
@@ -28,20 +30,20 @@ RSpec.describe SecureMirror, '#init' do
     end
 
     it 'is marked as a new repo when failing to load the git config' do
-      sm = SecureMirror.new(@hook_args, @config_file, @missing_file)
+      sm = SecureMirror.new(@hook_args, @config_file, @missing_file, @log_file)
       expect(sm)
       expect(sm.new_repo?).to be(true)
     end
 
     it 'raises an error when unable to load the config file' do
       expect do
-        SecureMirror.new(@hook_args, @missing_file, @git_config_file)
+        SecureMirror.new(@hook_args, @missing_file, @git_config_file, @log_file)
       end.to raise_error(Errno::ENOENT)
     end
 
     it 'has its repo set to nil when the remote is unsupported' do
       sm = SecureMirror.new(@hook_args, @config_file,
-                            @unsupported_git_config_file)
+                            @unsupported_git_config_file, @log_file)
       expect(sm)
       expect(sm.repo).to be(nil)
     end
