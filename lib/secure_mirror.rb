@@ -11,12 +11,6 @@ class SecureMirror
   @logger = nil
 
   attr_reader :repo
-  attr_reader :logger
-
-  def init_logger(log_file)
-    @logger = Logger.new(log_file)
-    @logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
-  end
 
   def new_repo?
     @git_config.nil?
@@ -82,16 +76,17 @@ class SecureMirror
     end
   end
 
-  def initialize(hook_args, config_file, git_config_file, log_file)
+  def initialize(hook_args, config_file, git_config_file, logger)
     # `pwd` for the hook will be the git directory itself
+    @logger = logger
     conf = File.open(config_file)
     @config = JSON.parse(conf.read, symbolize_names: true)
     @git_config = IniFile.load(git_config_file)
     return unless @git_config
-    init_logger(log_file)
     init_mirror_info
     @hook_args = hook_args
     @hook_args[:repo_name] = name
+    return if new_repo?
     @repo = repo_from_config
   end
 end
@@ -106,22 +101,34 @@ def evaluate_changes(config_file: 'config.json',
     future_sha: ARGV[2]
   }
 
+  logger = Logger.new(log_file)
+  logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
   begin
-    sm = SecureMirror.new(hook_args, config_file, git_config_file, log_file)
+    sm = SecureMirror.new(hook_args, config_file, git_config_file, logger)
 
     # if this is a brand new repo, or not a mirror allow the import
-    if sm.new_repo? || !sm.mirror?
+    if sm.new_repo?
+      logger.info('Brand new repo, cannot read git config info')
+      return 0
+    elsif !sm.mirror?
+      logger.info('Repo %s is not a mirror' % sm.name)
       return 0
     end
 
     # fail on invalid git config
-    return 1 if sm.misconfigured?
+    if sm.misconfigured?
+      logger.error('Repo %s is misconfigured' % sm.name)
+      return 1
+    end
 
     # if repo initialization was successful and we trust the change, allow it
-    return 0 if sm.repo && sm.repo.trusted_change?
+    if sm.repo && sm.repo.trusted_change?
+      logger.info('Importing trusted changes from %s' % sm.name)
+      return 0
+    end
   rescue StandardError => err
     # if anything goes wrong, cancel the changes
-    sm.logger.error(err)
+    logger.error(err)
     return 1
   end
 

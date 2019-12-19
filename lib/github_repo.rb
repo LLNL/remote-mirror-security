@@ -59,7 +59,6 @@ class GitHubRepo < Repo
   end
 
   def init_comments
-    @client.auto_paginate = true
     pulls = @client.commit_pulls(
       @name,
       @hook_args[:future_sha],
@@ -69,7 +68,7 @@ class GitHubRepo < Repo
     begin
       comments = pulls.first.rels[:comments].get.data
     rescue NoMethodError
-      @logger.error('Unable to retrieve associated PR comments for %s' % @name)
+      @logger.warn('Unable to retrieve associated PR comments for %s' % @name)
       return filtered_comments
     end
     # PR comments are done as issue comments. Issue comments only sort
