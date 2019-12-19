@@ -58,11 +58,15 @@ class SecureMirror
     require 'github_repo'
     config = @config[:repo_types][:github]
     return unless config
+    tokens = config[:access_tokens]
     clients = {}
-    config[:access_tokens].each do |type, token|
-      next if token.empty?
-      clients[type] = Octokit::Client.new(auto_paginate: true,
-                                          access_token: token)
+    clients[:main] = Octokit::Client.new(auto_paginate: true,
+                                         access_token: tokens[:main])
+    if tokens[:external] && tokens[:external][name]
+      clients[:external] = Octokit::Client.new(
+        auto_paginate: true,
+        access_token: tokens[:external][name]
+      )
     end
     GitHubRepo.new(@hook_args,
                    clients: clients,

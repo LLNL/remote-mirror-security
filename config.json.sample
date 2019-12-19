@@ -5,7 +5,8 @@
         "signoff_body": "LGTM",
             "access_tokens": {
                 "main": "",
-                "external": ""
+                "external": {
+                }
             }
         }
     }
