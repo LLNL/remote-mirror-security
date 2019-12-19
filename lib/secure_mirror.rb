@@ -30,12 +30,12 @@ class SecureMirror
   end
 
   def url
-    return '' unless mirror_name
+    return '' if mirror_name.empty?
     @git_config[mirror_name]['url']
   end
 
   def name
-    return '' unless mirror_name
+    return '' if mirror_name.empty?
     url = @git_config[mirror_name]['url']
     # can't use ruby's URI, it *won't* parse git ssh urls
     # case examples:
