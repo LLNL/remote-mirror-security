@@ -60,7 +60,9 @@ class SecureMirror
     return unless config
     clients = {}
     config[:access_tokens].each do |type, token|
-      clients[type] = Octokit::Client.new(per_page: 1000, access_token: token)
+      next if token.empty?
+      clients[type] = Octokit::Client.new(auto_paginate: true,
+                                          access_token: token)
     end
     GitHubRepo.new(@hook_args,
                    clients: clients,

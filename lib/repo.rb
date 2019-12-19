@@ -61,7 +61,7 @@ class Repo
   def init_commits
     # TODO: the "hook_args" that get supplied change based on hook_type
     new_hash = {}
-    [@hook_args[:current_sha], @hook_args[:future_sha]].each do |sha|
+    [@hook_args[:future_sha]].each do |sha|
       info = commit_info(sha)
       @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
       new_hash[sha] = Commit.new(sha, info[:date])
