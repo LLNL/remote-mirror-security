@@ -54,6 +54,8 @@ class GitHubRepo < Repo
       end
     rescue Octokit::Unauthorized
       @logger.warn('Unable to query collaborators for %s' % @name)
+    rescue Octokit::Forbidden
+      @logger.warn('Unable to query collaborators for %s' % @name)
     end
     collabs
   end
