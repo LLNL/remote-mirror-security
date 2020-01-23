@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # describes basic security model for a mirror
 module MirrorSecurity
   def vetted_change?(future_sha)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'logger'
 require 'ostruct'
 require 'secure_mirror'

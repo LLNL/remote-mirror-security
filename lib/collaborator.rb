@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # defines a collaborator on a repository
 class Collaborator
   @name = ''

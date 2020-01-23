@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'collaborator'
 
 RSpec.describe Collaborator, '#init' do
@@ -9,4 +11,3 @@ RSpec.describe Collaborator, '#init' do
     end
   end
 end
-

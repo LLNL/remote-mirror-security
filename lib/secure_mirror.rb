@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'logger'
 require 'fileutils'
@@ -31,16 +33,19 @@ class SecureMirror
 
   def mirror_name
     return '' unless mirror?
+
     @mirror_cfg[0][0]
   end
 
   def url
     return '' if mirror_name.empty?
+
     @git_config[mirror_name]['url']
   end
 
   def name
     return '' if mirror_name.empty?
+
     url = @git_config[mirror_name]['url']
     # can't use ruby's URI, it *won't* parse git ssh urls
     # case examples:
@@ -63,6 +68,7 @@ class SecureMirror
     require 'github_repo'
     config = @config[:repo_types][:github]
     return unless config
+
     tokens = config[:access_tokens]
     clients = {}
     clients[:main] = Octokit::Client.new(auto_paginate: true,
@@ -142,13 +148,13 @@ def evaluate_changes(config_file: 'config.json',
     end
 
     # if repo initialization was successful and we trust the change, allow it
-    if sm.repo && sm.repo.trusted_change?
+    if sm&.repo&.trusted_change?
       logger.info('Importing trusted changes from %s' % sm.name)
       return 0
     end
-  rescue StandardError => err
+  rescue StandardError => e
     # if anything goes wrong, cancel the changes
-    logger.error(err)
+    logger.error(e)
     return 1
   end
 

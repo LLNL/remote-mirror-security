@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'repo'
 require 'logger'
 require 'collaborator'
@@ -84,6 +86,7 @@ class GitHubRepo < Repo
     comments.reverse_each do |comment|
       # comments can be edited: use un-edited comments only
       next unless comment.updated_at == comment.created_at
+
       filtered_comments << Comment.new(
         comment.user.login,
         comment.body,
@@ -95,14 +98,12 @@ class GitHubRepo < Repo
 
   def initialize(hook_args, clients: {}, trusted_org: '', signoff_body: 'lgtm',
                  logger: Logger.new(STDOUT))
-    begin
-      super
-    rescue Octokit::Unauthorized => err
-      @logger.error('Request to GitHub unauthorized: ' + err.to_s)
-    rescue Octokit::Forbidden => err
-      @logger.error('Request to GitHub forbidden: ' + err.to_s)
-    rescue Octokit::ServerError => err
-      @logger.error('Request to GitHub failed: ' + err.to_s)
-    end
+    super
+  rescue Octokit::Unauthorized => e
+    @logger.error('Request to GitHub unauthorized: ' + e.to_s)
+  rescue Octokit::Forbidden => e
+    @logger.error('Request to GitHub forbidden: ' + e.to_s)
+  rescue Octokit::ServerError => e
+    @logger.error('Request to GitHub failed: ' + e.to_s)
   end
 end
