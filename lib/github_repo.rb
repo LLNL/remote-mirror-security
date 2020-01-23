@@ -52,16 +52,16 @@ class GitHubRepo < Repo
       @external_client.collabs(@name).each do |collab|
         username = collab[:login]
         in_org = @org_members[username] ? true : false
-        in_org || @logger.warn('%s is not in %s!' % [username, @trusted_org])
+        in_org || @logger.info('%s is not in %s!' % [username, @trusted_org])
         two_factor_enabled = in_org && @org_members[username].trusted
-        two_factor_enabled || @logger.warn('%s has 2FA disabled!' % username)
+        two_factor_enabled || @logger.info('%s has 2FA disabled!' % username)
         trusted = in_org && two_factor_enabled
         collabs[username] = Collaborator.new(username, trusted)
       end
     rescue Octokit::Unauthorized
-      @logger.warn('Unable to query collaborators for %s' % @name)
+      @logger.info('Unable to query collaborators for %s' % @name)
     rescue Octokit::Forbidden
-      @logger.warn('Unable to query collaborators for %s' % @name)
+      @logger.info('Unable to query collaborators for %s' % @name)
     end
     collabs
   end
@@ -76,7 +76,7 @@ class GitHubRepo < Repo
     begin
       comments = pulls.first.rels[:comments].get.data
     rescue NoMethodError
-      @logger.warn('Unable to retrieve associated PR comments for %s' % @name)
+      @logger.info('PR comments for %s not found' % @name)
       return filtered_comments
     end
     # PR comments are done as issue comments. Issue comments only sort
