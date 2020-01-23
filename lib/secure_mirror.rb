@@ -1,5 +1,6 @@
 require 'json'
 require 'logger'
+require 'fileutils'
 require 'inifile'
 require 'octokit'
 
@@ -115,6 +116,8 @@ def evaluate_changes(config_file: 'config.json',
     future_sha: ARGV[2]
   }
 
+  log_dir = File.dirname(log_file)
+  FileUtils.mkdir_p log_dir unless File.exist? log_dir
   logger = Logger.new(log_file)
   logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
   begin
