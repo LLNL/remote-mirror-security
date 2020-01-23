@@ -20,6 +20,10 @@ class SecureMirror
     !@mirror_cfg.empty?
   end
 
+  def deletion?
+    @hook_args[:future_sha].eql?('0000000000000000000000000000000000000000')
+  end
+
   def misconfigured?
     @mirror_cfg.size > 1
   end
@@ -85,14 +89,18 @@ class SecureMirror
   def initialize(hook_args, config_file, git_config_file, logger)
     # `pwd` for the hook will be the git directory itself
     @logger = logger
+    @hook_args = hook_args
+    return if deletion?
+
     conf = File.open(config_file)
     @config = JSON.parse(conf.read, symbolize_names: true)
     @git_config = IniFile.load(git_config_file)
     return unless @git_config
+
     init_mirror_info
-    @hook_args = hook_args
     @hook_args[:repo_name] = name
     return if new_repo?
+
     @repo = repo_from_config
   end
 end
@@ -115,6 +123,9 @@ def evaluate_changes(config_file: 'config.json',
     # if this is a brand new repo, or not a mirror allow the import
     if sm.new_repo?
       logger.info('Brand new repo, cannot read git config info')
+      return 0
+    elsif sm.deletion?
+      logger.info('Allowing branch to be deleted')
       return 0
     elsif !sm.mirror?
       logger.info('Repo %s is not a mirror' % sm.name)

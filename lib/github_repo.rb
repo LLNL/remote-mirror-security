@@ -20,8 +20,12 @@ class GitHubRepo < Repo
   end
 
   def commit_info(sha)
+    return if sha.eql? '0000000000000000000000000000000000000000'
+
     commit = @client.commit(@name, sha)
     { date: commit.commit.author.date }
+  rescue Octokit::UnprocessableEntity
+    @logger.warn('Unable to query commit for sha %s' % sha)
   end
 
   def init_trusted_org_members

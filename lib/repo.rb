@@ -63,7 +63,9 @@ class Repo
     new_hash = {}
     [@hook_args[:future_sha]].each do |sha|
       info = commit_info(sha)
-      @logger.debug{ 'Commit %s was created %s' % [sha, info[:date]] }
+      next unless info
+
+      @logger.debug { 'Commit %s was created %s' % [sha, info[:date]] }
       new_hash[sha] = Commit.new(sha, info[:date])
     end
     new_hash
