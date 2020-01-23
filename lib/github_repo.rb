@@ -6,6 +6,8 @@ require 'octokit'
 # GitHub specific repo
 class GitHubRepo < Repo
   def protected_branch?
+    return false unless @hook_args[:future_sha]
+
     branch_name = branch_name_from_ref
     branches = @client.commit_branches(
       @name,
