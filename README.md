@@ -45,3 +45,11 @@ require 'secure_mirror'
 
 exit evaluate_changes(config_file: '/absolute/path/to/config.json')
 ```
+
+# Release
+
+This code is released under the MIT License. For more details see the LICENSE File.
+
+SPDX-License-Identifier: MIT
+
+LLNL-CODE-801838
