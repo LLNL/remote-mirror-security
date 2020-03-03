@@ -20,11 +20,19 @@ require 'time'
 class Commit
   @sha = ''
   @date = nil
+  @branches = []
 
   attr_reader :sha
   attr_reader :date
+  attr_reader :branches
 
-  def initialize(sha, date)
+  def protected_branch?(branch_name)
+    @branches.any? do |branch|
+      branch[:name] == branch_name && branch[:protection]
+    end
+  end
+
+  def initialize(sha, date, branches: nil)
     @sha = sha
     if date.is_a?(Time)
       @date = date
@@ -33,5 +41,6 @@ class Commit
     elsif date.is_a?(String)
       @date = Time.parse(date)
     end
+    @branches = branches
   end
 end
