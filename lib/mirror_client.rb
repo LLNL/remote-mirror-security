@@ -25,14 +25,14 @@ class MirrorClientNotFound < StandardError; end
 class MirrorClientGenericError < StandardError; end
 
 # wraps MirrorClient and caches results in memory or to a file
-class CachingMirrorClient < SimpleDelegator
+class CachingMirrorClient
   attr_accessor :default_expiration
 
-  def initialize(*args, cache_dir: '', default_expiration: Time.now + 5 * 60)
+  def initialize(client, cache_dir: '', default_expiration: Time.now + 5 * 60)
     @cache = {}
+    @client = SimpleDelegator.new(client)
     @cache_dir = cache_dir
     @default_expiration = default_expiration
-    super(*args)
   end
 
   def in_memory?
@@ -97,6 +97,7 @@ class CachingMirrorClient < SimpleDelegator
 
     cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
     cached[:data] = restore_objects(cached[:data])
+    cached[:expires] = Time.parse(cached[:expires])
     cached
   end
 
@@ -109,31 +110,21 @@ class CachingMirrorClient < SimpleDelegator
     obj
   end
 
-  def cached_call(for_method, *args)
+  def respond_to_missing?
+    @client.__getobj__.respond_to? method
+  end
+
+  def method_missing(method, *args, &_block)
+    return super unless @client.__getobj__.respond_to? method
+
     expires = strip_expires(args)
-    key = cache_key(for_method, args.to_s)
+    key = cache_key(method, args.to_s)
     cached = read_cache(key)
-    return cached[:data] if cached && Time.parse(cached[:expires]) >= Time.now
+    return cached[:data] if cached && cached[:expires] >= Time.now
 
     write_cache(key,
                 expires: expires,
-                data: __getobj__.public_send(for_method, *args))[:data]
-  end
-
-  def org_members(*args)
-    cached_call(__method__, *args)
-  end
-
-  def collaborators(*args)
-    cached_call(__method__, *args)
-  end
-
-  def commit(*args)
-    cached_call(__method__, *args)
-  end
-
-  def review_comments(*args)
-    cached_call(__method__, *args)
+                data: @client.__getobj__.public_send(method, *args))[:data]
   end
 end
 

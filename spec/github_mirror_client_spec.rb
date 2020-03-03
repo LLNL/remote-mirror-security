@@ -140,7 +140,7 @@ RSpec.describe GitHubMirrorClient, '#cache' do
         raise StandardError, 'should not be called again'
       end
       key = @mirror_client.cache_key('org_members', [@org].to_s)
-      expect(File.exist?(@cache_dir + "/#{key}")).to be true
+      expect(File.exist?(@mirror_client.cache_file(key))).to be true
       members = @mirror_client.org_members(@org, expires: Time.now)
       members.each do |name, member|
         expect(member.name).not_to be nil
