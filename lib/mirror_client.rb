@@ -16,6 +16,8 @@
 require 'json'
 require 'digest/sha2'
 
+require 'collaborator'
+
 class MirrorClientUnauthorized < StandardError; end
 class MirrorClientForbidden < StandardError; end
 class MirrorClientServerError < StandardError; end
@@ -24,14 +26,12 @@ class MirrorClientGenericError < StandardError; end
 
 # wraps MirrorClient and caches results in memory or to a file
 class CachingMirrorClient < SimpleDelegator
-  @cache = {}
-  @cache_dir = ''
-  @default_expiration = Time.now + 5 * 60
-
   attr_accessor :default_expiration
 
-  def initialize(*args, cache_dir: '')
+  def initialize(*args, cache_dir: '', default_expiration: Time.now + 5 * 60)
+    @cache = {}
     @cache_dir = cache_dir
+    @default_expiration = default_expiration
     super(*args)
   end
 
@@ -43,36 +43,85 @@ class CachingMirrorClient < SimpleDelegator
     Digest::SHA2.hexdigest "#{method_name}-#{arg_string}"
   end
 
+  def cache_file(key)
+    @cache_dir + "/#{key}"
+  end
+
+  def strip_expires(args)
+    kwargs = args[-1].is_a?(Hash) ? args[-1] : nil
+    return @default_expiration unless kwargs
+
+    expires = kwargs.delete(:expires) || @default_expiration
+    args.pop if kwargs.empty?
+    expires
+  end
+
+  def class_from_string(klass)
+    return Object.const_get(klass) unless klass.include?(':')
+
+    klass.split('::').inject(Object) { |o, c| o.const_get c }
+  end
+
+  def restore_hash(data)
+    klass = class_from_string(data[:klass] || data.values.first[:klass])
+    return klass.from_json(data) if data[:klass]
+
+    data.map do |key, item|
+      [key.to_s, klass.from_json(item)]
+    end.to_h
+  end
+
+  def restore_array(data)
+    klass = class_from_string(data[0][:klass])
+    data.map do |item|
+      klass.from_json(item)
+    end
+  end
+
+  def restore_objects(data)
+    if data.is_a?(Array)
+      return data unless data[0][:klass]
+
+      restore_array(data)
+    elsif data.is_a?(Hash)
+      return data unless data[:klass] || data.values.first[:klass]
+
+      restore_hash(data)
+    end
+  end
+
   def read_cache(key)
     return @cache[key] if in_memory?
 
-    filename = @cache_dir + "/#{key}"
-    return unless File.exist? filename
+    return unless File.exist?(cache_file(key))
 
-    JSON.parse(File.read(filename), symbolize_names: true)
+    cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
+    cached[:data] = restore_objects(cached[:data])
+    cached
   end
 
   def write_cache(key, obj)
     if in_memory?
       @cache[key] = obj
     else
-      File.write(@cache_dir + "/#{key}", JSON.dump(obj))
+      File.write(cache_file(key), JSON.dump(obj))
     end
     obj
   end
 
   def cached_call(for_method, *args)
+    expires = strip_expires(args)
     key = cache_key(for_method, args.to_s)
     cached = read_cache(key)
-    return cached[:data] if cached && cached[:expires] >= Time.now
+    return cached[:data] if cached && Time.parse(cached[:expires]) >= Time.now
+
+    write_cache(key,
+                expires: expires,
+                data: __getobj__.public_send(for_method, *args))[:data]
   end
 
   def org_members(*args)
-    key = cache_key(__method__, args.to_s)
     cached_call(__method__, *args)
-    kwargs = args[-1].is_a?(Hash) ? args[-1] : {}
-    expires = kwargs[:expires] || @default_expiration
-    write_cache(key, expires: expires, data: super(*args))[:data]
   end
 
   def collaborators(*args)

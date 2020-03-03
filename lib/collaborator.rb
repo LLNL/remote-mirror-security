@@ -21,6 +21,18 @@ class Collaborator
   attr_reader :name
   attr_reader :trusted
 
+  def as_json(options={})
+    { klass: self.class.name, name: @name, trusted: @trusted }
+  end
+
+  def to_json(*options)
+    as_json(*options).to_json(*options)
+  end
+
+  def self.from_json(json_obj)
+    new(json_obj[:name], json_obj[:trusted])
+  end
+
   def initialize(name, trusted)
     @name = name
     @trusted = trusted
