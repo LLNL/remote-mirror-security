@@ -48,7 +48,7 @@ class GitHubMirrorClient < MirrorClient
     @@mirror_error_map[error_name]
   end
 
-  def org_members(org, client_name: '', expires: nil)
+  def org_members(org, client_name: '')
     client = @alt_clients[client_name.to_sym] || @client
     no_two_factor = client.org_members(org, filter: '2fa_disabled')
                           .map { |member| member[:login] }.to_set
@@ -62,7 +62,7 @@ class GitHubMirrorClient < MirrorClient
     )
   end
 
-  def collaborators(repo, client_name: '', expires: nil)
+  def collaborators(repo, client_name: '')
     client = @alt_clients[client_name.to_sym] || @client
     client.collabs(repo).map do |collab|
       [collab[:login], Collaborator.new(collab[:login], false)]
@@ -74,7 +74,7 @@ class GitHubMirrorClient < MirrorClient
     )
   end
 
-  def commit(repo, sha, client_name: '', expires: nil)
+  def commit(repo, sha, client_name: '')
     return Commit.new(sha, Time.now) if sha.eql? NIL_SHA
 
     client = @alt_clients[client_name.to_sym] || @client
@@ -90,7 +90,7 @@ class GitHubMirrorClient < MirrorClient
     )
   end
 
-  def review_comments(repo, sha, since: nil, client_name: '', expires: nil)
+  def review_comments(repo, sha, since: nil, client_name: '')
     client = @alt_clients[client_name.to_sym] || @client
     preview_header = Octokit::Preview::PREVIEW_TYPES[:commit_pulls]
     pulls = client.commit_pulls(repo, sha, accept: preview_header)
