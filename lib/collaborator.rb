@@ -21,7 +21,7 @@ class Collaborator
   attr_reader :name
   attr_reader :trusted
 
-  def as_json(options={})
+  def as_json(*)
     { klass: self.class.name, name: @name, trusted: @trusted }
   end
 

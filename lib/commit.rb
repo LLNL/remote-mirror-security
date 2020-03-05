@@ -26,6 +26,18 @@ class Commit
   attr_reader :date
   attr_reader :branches
 
+  def as_json(*)
+    { klass: self.class.name, sha: @sha, date: @date, branches: branches }
+  end
+
+  def to_json(*options)
+    as_json(*options).to_json(*options)
+  end
+
+  def self.from_json(json_obj)
+    new(json_obj[:sha], json_obj[:date], branches: json_obj[:branches])
+  end
+
   def protected_branch?(branch_name)
     @branches.any? do |branch|
       branch[:name] == branch_name && branch[:protection]

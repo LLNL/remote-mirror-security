@@ -26,6 +26,18 @@ class Comment
   attr_reader :body
   attr_reader :date
 
+  def as_json(*)
+    { klass: self.class.name, commenter: @commenter, body: @body, date: @date }
+  end
+
+  def to_json(*options)
+    as_json(*options).to_json(*options)
+  end
+
+  def self.from_json(json_obj)
+    new(json_obj[:commenter], json_obj[:body], json_obj[:date])
+  end
+
   def initialize(commenter, body, date)
     @commenter = commenter
     @body = body
