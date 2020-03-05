@@ -26,17 +26,16 @@ class MirrorClientGenericError < StandardError; end
 
 # wraps MirrorClient and caches results in memory or to a file
 class CachingMirrorClient
+  attr_accessor :cache
+  attr_accessor :client
   attr_accessor :default_expiration
 
-  def initialize(client, cache_dir: '', default_expiration: Time.now + 5 * 60)
+  def initialize(client, cache_dir: '.sm', default_expiration: 5 * 60)
     @cache = {}
-    @client = SimpleDelegator.new(client)
+    @client = client
     @cache_dir = cache_dir
     @default_expiration = default_expiration
-  end
-
-  def in_memory?
-    @cache_dir.empty?
+    FileUtils.mkdir_p @cache_dir
   end
 
   def cache_key(method_name, arg_string)
@@ -47,13 +46,17 @@ class CachingMirrorClient
     @cache_dir + "/#{key}"
   end
 
-  def strip_expires(args)
-    kwargs = args[-1].is_a?(Hash) ? args[-1] : nil
-    return @default_expiration unless kwargs
+  def keyword_arguments(args)
+    args[-1].is_a?(Hash) ? args[-1] : nil
+  end
 
-    expires = kwargs.delete(:expires) || @default_expiration
-    args.pop if kwargs.empty?
-    expires
+  def strip_expires(args)
+    kwargs = keyword_arguments(args)
+    provided_expires = kwargs && kwargs[:expires]
+    args.pop if provided_expires && kwargs.size == 1
+    lifetime = kwargs.delete(:expires) if provided_expires
+    lifetime ||= @default_expiration
+    Time.now + lifetime
   end
 
   def class_from_string(klass)
@@ -91,40 +94,41 @@ class CachingMirrorClient
   end
 
   def read_cache(key)
-    return @cache[key] if in_memory?
+    cached = @cache[key]
+    return cached if cached && cached[:expires] >= Time.now
 
     return unless File.exist?(cache_file(key))
 
     cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
     cached[:data] = restore_objects(cached[:data])
     cached[:expires] = Time.parse(cached[:expires])
-    cached
+    @cache[key] = cached
   end
 
   def write_cache(key, obj)
-    if in_memory?
-      @cache[key] = obj
-    else
-      File.write(cache_file(key), JSON.dump(obj))
-    end
-    obj
+    File.write(cache_file(key), JSON.dump(obj))
+    @cache[key] = obj
   end
 
-  def respond_to_missing?
-    @client.__getobj__.respond_to? method
+  def respond_to_missing?(method, *)
+    @client.respond_to? method
   end
 
-  def method_missing(method, *args, &_block)
-    return super unless @client.__getobj__.respond_to? method
-
+  def cache_call(method, *args)
     expires = strip_expires(args)
     key = cache_key(method, args.to_s)
     cached = read_cache(key)
-    return cached[:data] if cached && cached[:expires] >= Time.now
+    return cached[:data] if cached
 
     write_cache(key,
                 expires: expires,
-                data: @client.__getobj__.public_send(method, *args))[:data]
+                data: @client.public_send(method, *args))[:data]
+  end
+
+  def method_missing(method, *args, &_block)
+    return super unless respond_to_missing? method
+
+    cache_call(method, *args)
   end
 end
 
