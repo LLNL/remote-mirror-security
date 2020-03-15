@@ -18,141 +18,143 @@ require 'digest/sha2'
 
 require 'collaborator'
 
-class MirrorClientUnauthorized < StandardError; end
-class MirrorClientForbidden < StandardError; end
-class MirrorClientServerError < StandardError; end
-class MirrorClientNotFound < StandardError; end
-class MirrorClientGenericError < StandardError; end
+module SecureMirror
+  class ClientUnauthorized < StandardError; end
+  class ClientForbidden < StandardError; end
+  class ClientServerError < StandardError; end
+  class ClientNotFound < StandardError; end
+  class ClientGenericError < StandardError; end
 
-# wraps MirrorClient and caches results in memory or to a file
-class CachingMirrorClient
-  attr_accessor :cache
-  attr_accessor :client
-  attr_accessor :default_expiration
+  # wraps MirrorClient and caches results in memory or to a file
+  class CachingMirrorClient
+    attr_accessor :cache
+    attr_accessor :client
+    attr_accessor :default_expiration
 
-  def initialize(client, cache_dir: '.sm', default_expiration: 5 * 60)
-    @cache = {}
-    @client = client
-    @cache_dir = cache_dir
-    @default_expiration = default_expiration
-    FileUtils.mkdir_p @cache_dir
-  end
+    def initialize(client, cache_dir: '.sm', default_expiration: 5 * 60)
+      @cache = {}
+      @client = client
+      @cache_dir = cache_dir
+      @default_expiration = default_expiration
+      FileUtils.mkdir_p @cache_dir
+    end
 
-  def cache_key(method_name, arg_string)
-    Digest::SHA2.hexdigest "#{method_name}-#{arg_string}"
-  end
+    def cache_key(method_name, arg_string)
+      Digest::SHA2.hexdigest "#{method_name}-#{arg_string}"
+    end
 
-  def cache_file(key)
-    @cache_dir + "/#{key}"
-  end
+    def cache_file(key)
+      @cache_dir + "/#{key}"
+    end
 
-  def keyword_arguments(args)
-    args[-1].is_a?(Hash) ? args[-1] : nil
-  end
+    def keyword_arguments(args)
+      args[-1].is_a?(Hash) ? args[-1] : nil
+    end
 
-  def strip_expires(args)
-    kwargs = keyword_arguments(args)
-    provided_expires = kwargs && kwargs[:expires]
-    args.pop if provided_expires && kwargs.size == 1
-    lifetime = kwargs.delete(:expires) if provided_expires
-    lifetime ||= @default_expiration
-    Time.now + lifetime
-  end
+    def strip_expires(args)
+      kwargs = keyword_arguments(args)
+      provided_expires = kwargs && kwargs[:expires]
+      args.pop if provided_expires && kwargs.size == 1
+      lifetime = kwargs.delete(:expires) if provided_expires
+      lifetime ||= @default_expiration
+      Time.now + lifetime
+    end
 
-  def class_from_string(klass)
-    return Object.const_get(klass) unless klass.include?(':')
+    def class_from_string(klass)
+      return Object.const_get(klass) unless klass.include?(':')
 
-    klass.split('::').inject(Object) { |o, c| o.const_get c }
-  end
+      klass.split('::').inject(Object) { |o, c| o.const_get c }
+    end
 
-  def restore_hash(data)
-    klass = class_from_string(data[:klass] || data.values.first[:klass])
-    return klass.from_json(data) if data[:klass]
+    def restore_hash(data)
+      klass = class_from_string(data[:klass] || data.values.first[:klass])
+      return klass.from_json(data) if data[:klass]
 
-    data.map do |key, item|
-      [key.to_s, klass.from_json(item)]
-    end.to_h
-  end
+      data.map do |key, item|
+        [key.to_s, klass.from_json(item)]
+      end.to_h
+    end
 
-  def restore_array(data)
-    klass = class_from_string(data[0][:klass])
-    data.map do |item|
-      klass.from_json(item)
+    def restore_array(data)
+      klass = class_from_string(data[0][:klass])
+      data.map do |item|
+        klass.from_json(item)
+      end
+    end
+
+    def restore_objects(data)
+      if data.is_a?(Array)
+        return data unless data[0][:klass]
+
+        restore_array(data)
+      elsif data.is_a?(Hash)
+        return data unless data[:klass] || data.values.first[:klass]
+
+        restore_hash(data)
+      end
+    end
+
+    def read_cache(key)
+      cached = @cache[key]
+      return cached if cached && cached[:expires] >= Time.now
+
+      return unless File.exist?(cache_file(key))
+
+      cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
+      cached[:data] = restore_objects(cached[:data])
+      cached[:expires] = Time.parse(cached[:expires])
+      @cache[key] = cached
+    end
+
+    def write_cache(key, obj)
+      File.write(cache_file(key), JSON.dump(obj))
+      @cache[key] = obj
+    end
+
+    def respond_to_missing?(method, *)
+      @client.respond_to? method
+    end
+
+    def cache_call(method, *args)
+      expires = strip_expires(args)
+      key = cache_key(method, args.to_s)
+      cached = read_cache(key)
+      return cached[:data] if cached
+
+      write_cache(key,
+                  expires: expires,
+                  data: @client.public_send(method, *args))[:data]
+    end
+
+    def method_missing(method, *args, &_block)
+      return super unless respond_to_missing? method
+
+      cache_call(method, *args)
     end
   end
 
-  def restore_objects(data)
-    if data.is_a?(Array)
-      return data unless data[0][:klass]
+  # provides a generic REST API client interface for querying remote mirror data
+  class MirrorClient
+    @client = nil
+    @alt_clients = nil
 
-      restore_array(data)
-    elsif data.is_a?(Hash)
-      return data unless data[:klass] || data.values.first[:klass]
+    attr_accessor :client
+    attr_accessor :alt_clients
 
-      restore_hash(data)
+    def org_members(org, client_name: '', expires: nil)
+      raise NotImplementedError
     end
-  end
 
-  def read_cache(key)
-    cached = @cache[key]
-    return cached if cached && cached[:expires] >= Time.now
+    def collaborators(repo, client_name: '', expires: nil)
+      raise NotImplementedError
+    end
 
-    return unless File.exist?(cache_file(key))
+    def commit(repo, sha, client_name: '', expires: nil)
+      raise NotImplementedError
+    end
 
-    cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
-    cached[:data] = restore_objects(cached[:data])
-    cached[:expires] = Time.parse(cached[:expires])
-    @cache[key] = cached
-  end
-
-  def write_cache(key, obj)
-    File.write(cache_file(key), JSON.dump(obj))
-    @cache[key] = obj
-  end
-
-  def respond_to_missing?(method, *)
-    @client.respond_to? method
-  end
-
-  def cache_call(method, *args)
-    expires = strip_expires(args)
-    key = cache_key(method, args.to_s)
-    cached = read_cache(key)
-    return cached[:data] if cached
-
-    write_cache(key,
-                expires: expires,
-                data: @client.public_send(method, *args))[:data]
-  end
-
-  def method_missing(method, *args, &_block)
-    return super unless respond_to_missing? method
-
-    cache_call(method, *args)
-  end
-end
-
-# provides a generic REST API client interface for querying remote mirror data
-class MirrorClient
-  @client = nil
-  @alt_clients = nil
-
-  attr_accessor :client
-  attr_accessor :alt_clients
-
-  def org_members(org, client_name: '', expires: nil)
-    raise NotImplementedError
-  end
-
-  def collaborators(repo, client_name: '', expires: nil)
-    raise NotImplementedError
-  end
-
-  def commit(repo, sha, client_name: '', expires: nil)
-    raise NotImplementedError
-  end
-
-  def review_comments(repo, sha, client_name: '', expires: nil)
-    raise NotImplementedError
+    def review_comments(repo, sha, client_name: '', expires: nil)
+      raise NotImplementedError
+    end
   end
 end

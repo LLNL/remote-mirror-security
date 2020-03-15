@@ -15,7 +15,7 @@
 
 require 'git_repo'
 
-RSpec.describe GitRepo, '#init' do
+RSpec.describe SecureMirror::GitRepo, '#init' do
   before(:each) do
     @empty_config = ''
     @git_config_file = __dir__ + '/fixtures/github-config'
@@ -25,18 +25,18 @@ RSpec.describe GitRepo, '#init' do
 
   context 'creates a git repo object' do
     it 'says it is a new repo if no config exists' do
-      repo = GitRepo.new(@empty_config)
+      repo = SecureMirror::GitRepo.new(@empty_config)
       expect(repo.new_repo?).to be true
     end
 
     it 'reports when a repo is not a mirror' do
-      repo = GitRepo.new(@non_mirror_config_file)
+      repo = SecureMirror::GitRepo.new(@non_mirror_config_file)
       expect(repo.new_repo?).to be false
       expect(repo.mirror?).to be false
     end
 
     it 'populates info about a repo on disk' do
-      repo = GitRepo.new(@git_config_file)
+      repo = SecureMirror::GitRepo.new(@git_config_file)
       expect(repo.name).to eq 'LLNL/Umpire'
       expect(repo.mirror?).to be true
       expect(repo.new_repo?).to be false

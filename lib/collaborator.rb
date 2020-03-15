@@ -13,28 +13,30 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-# defines a collaborator on a repository
-class Collaborator
-  @name = ''
-  @trusted = false
+module SecureMirror
+  # defines a collaborator on a repository
+  class Collaborator
+    @name = ''
+    @trusted = false
 
-  attr_reader :name
-  attr_reader :trusted
+    attr_reader :name
+    attr_reader :trusted
 
-  def as_json(*)
-    { klass: self.class.name, name: @name, trusted: @trusted }
-  end
+    def as_json(*)
+      { klass: self.class.name, name: @name, trusted: @trusted }
+    end
 
-  def to_json(*options)
-    as_json(*options).to_json(*options)
-  end
+    def to_json(*options)
+      as_json(*options).to_json(*options)
+    end
 
-  def self.from_json(json_obj)
-    new(json_obj[:name], json_obj[:trusted])
-  end
+    def self.from_json(json_obj)
+      new(json_obj[:name], json_obj[:trusted])
+    end
 
-  def initialize(name, trusted)
-    @name = name
-    @trusted = trusted
+    def initialize(name, trusted)
+      @name = name
+      @trusted = trusted
+    end
   end
 end

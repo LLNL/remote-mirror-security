@@ -35,12 +35,15 @@ class MockObject
   def initialize(*); end
 end
 
-RSpec.describe CachingMirrorClient, '#unit' do
+RSpec.describe SecureMirror::CachingMirrorClient, '#unit' do
   before(:each) do
     @client = {}
     @cache_dir = '/tmp/test'
     FileUtils.rm_rf @cache_dir if File.exist? @cache_dir
-    @mirror_client = CachingMirrorClient.new(@client, cache_dir: @cache_dir)
+    @mirror_client = SecureMirror::CachingMirrorClient.new(
+      @client,
+      cache_dir: @cache_dir
+    )
   end
 
   context 'methods to support caching' do

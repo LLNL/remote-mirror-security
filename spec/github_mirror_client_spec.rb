@@ -29,7 +29,7 @@ def mock_members(org_name, hash)
   end
 end
 
-RSpec.describe GitHubMirrorClient, '#client' do
+RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
   before(:each) do
     @org = 'foo'
     @repo = 'bar'
@@ -38,7 +38,7 @@ RSpec.describe GitHubMirrorClient, '#client' do
     @alt_tokens = {
       bar: 'BAR'
     }
-    @mirror_client = GitHubMirrorClient.new(@token, alt_tokens: @alt_tokens)
+    @mirror_client = SecureMirror::GitHubMirrorClient.new(@token, alt_tokens: @alt_tokens)
   end
 
   context 'exposes a simplified subset of data from GitHub' do
@@ -94,7 +94,7 @@ RSpec.describe GitHubMirrorClient, '#client' do
 
       expect do
         @mirror_client.org_members(@org)
-      end.to raise_error(MirrorClientUnauthorized)
+      end.to raise_error(SecureMirror::ClientUnauthorized)
 
       members = @mirror_client.org_members(@org, client_name: 'bar')
       members.each do |name, member|
@@ -106,7 +106,7 @@ RSpec.describe GitHubMirrorClient, '#client' do
   end
 end
 
-RSpec.describe GitHubMirrorClient, '#cache' do
+RSpec.describe SecureMirror::GitHubMirrorClient, '#cache' do
   before(:all) do
   end
 
@@ -120,8 +120,11 @@ RSpec.describe GitHubMirrorClient, '#cache' do
     }
     @cache_dir = '/tmp/secure-mirror-tests'
     FileUtils.mkdir_p @cache_dir
-    @github_client = GitHubMirrorClient.new(@token, alt_tokens: @alt_tokens)
-    @mirror_client = CachingMirrorClient.new(
+    @github_client = SecureMirror::GitHubMirrorClient.new(
+      @token,
+      alt_tokens: @alt_tokens
+    )
+    @mirror_client = SecureMirror::CachingMirrorClient.new(
       @github_client,
       cache_dir: @cache_dir
     )
