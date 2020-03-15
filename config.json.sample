@@ -1,4 +1,12 @@
 {
+    "client": {
+        "cache": {
+            "enable": true,
+            "dir": ".sm",
+            "default_expiration": 300,
+        }
+    },
+    "policy_definition": "sample.rb",
     "repo_types": {
         "github": {
         "trusted_org": "Foo",

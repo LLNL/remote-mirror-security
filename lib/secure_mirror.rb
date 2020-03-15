@@ -16,160 +16,91 @@
 require 'json'
 require 'logger'
 require 'fileutils'
-require 'inifile'
-require 'octokit'
+require 'git_repo'
+require 'mirror_client'
 
-# interface and setup for the correct secure-mirror repo implementation
-class SecureMirror
-  @repo = nil
-  @config = nil
-  @git_config = nil
-  @logger = nil
-
-  attr_reader :repo
-
-  def new_repo?
-    @git_config.nil?
-  end
-
-  def mirror?
-    !@mirror_cfg.empty?
-  end
-
-  def deletion?
-    @hook_args[:future_sha].eql?('0000000000000000000000000000000000000000')
-  end
-
-  def misconfigured?
-    @mirror_cfg.size > 1
-  end
-
-  def mirror_name
-    return '' unless mirror?
-
-    @mirror_cfg[0][0]
-  end
-
-  def url
-    return '' if mirror_name.empty?
-
-    @git_config[mirror_name]['url']
-  end
-
-  def name
-    return '' if mirror_name.empty?
-
-    url = @git_config[mirror_name]['url']
-    # can't use ruby's URI, it *won't* parse git ssh urls
-    # case examples:
-    #   git@github.com:LLNL/SSHSpawner.git
-    #   https://github.com/tgmachina/test-mirror.git
-    url.split(':')[-1]
-       .gsub('.git', '')
-       .split('/')[-2..-1]
-       .join('/')
-  end
-
-  def init_mirror_info
-    # pull all the remotes out of the config except the one marked "upstream"
-    @mirror_cfg = @git_config.select do |k, v|
-      k.include?('remote') && !k.include?('upstream') && v.include?('mirror')
+module SecureMirror
+  def hook_args(phase)
+    # variables provided by the git hook depend on stage
+    case phase
+    when 'pre-receive', 'post-receive'
+      ARGV.each_slice(3).map do |old_sha, new_sha, ref_name|
+        { old_sha: old_sha, new_sha: new_sha, ref_name: ref_name }
+      end
+    when 'update'
+      { ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2] }
     end
   end
 
-  def init_github_repo
-    require 'github_repo'
-    config = @config[:repo_types][:github]
-    return unless config
-
-    tokens = config[:access_tokens]
-    clients = {}
-    clients[:main] = Octokit::Client.new(auto_paginate: true,
-                                         access_token: tokens[:main])
-    if tokens[:external] && tokens[:external][name]
-      clients[:external] = Octokit::Client.new(
-        auto_paginate: true,
-        access_token: tokens[:external][name]
-      )
-    end
-    GitHubRepo.new(@hook_args,
-                   clients: clients,
-                   trusted_org: config[:trusted_org],
-                   signoff_body: config[:signoff_body],
-                   logger: @logger)
+  def init_logger(log_file)
+    log_dir = File.dirname(log_file)
+    FileUtils.mkdir_p log_dir unless File.exist? log_dir
+    level = ENV['SM_LOG_LEVEL'] || Logger::INFO
+    Logger.new(log_file, level: level)
   end
 
-  def repo_from_config
-    case url.downcase
+  def github_client(access_tokens)
+    require 'github_mirror_client'
+    GitHubMirrorClient.new(access_tokens[:main],
+                           alt_clients: access_tokens[:external])
+  end
+
+  def caching_client(client, config)
+    CachingMirrorClient.new(client,
+                            cache_dir: config[:dir],
+                            default_expiration: config[:default_expiration])
+  end
+
+  def client_for_repo(repo, config)
+    case repo.url.downcase
     when /github/
-      init_github_repo
+      client = github_client(config[:github][:access_tokens])
+    end
+    return client unless config[:cache][:enable]
+
+    caching_client(client, config[:cache])
+  end
+
+  def policy_in_phase(policy, phase)
+    case phase
+    when 'pre-receive'
+      policy.pre_receive
+    when 'update'
+      policy.update
+    when 'post-receive'
+      policy.post_receive
     end
   end
 
-  def initialize(hook_args, config_file, git_config_file, logger)
-    # `pwd` for the hook will be the git directory itself
-    @logger = logger
-    @hook_args = hook_args
-    return if deletion?
+  def policy_from_config(config)
+    return Policy unless config[:policy_definition]
 
-    conf = File.open(config_file)
-    @config = JSON.parse(conf.read, symbolize_names: true)
-    @git_config = IniFile.load(git_config_file)
-    return unless @git_config
-
-    init_mirror_info
-    @hook_args[:repo_name] = name
-    return if new_repo?
-
-    @repo = repo_from_config
+    require config[:policy_definition]
+    # TODO, instead of method, allow name to be defined in config
+    load_policy_class
+  rescue LoadError => e
+    puts 'Error loading config: ' + e.to_s
   end
-end
 
-def evaluate_changes(config_file: 'config.json',
-                     git_config_file: Dir.pwd + '/config',
-                     log_file: 'mirror.log')
-  # the environment variables are provided by the git update hook
-  hook_args = {
-    ref_name: ARGV[0],
-    current_sha: ARGV[1],
-    future_sha: ARGV[2]
-  }
+  def evaluate_changes(phase,
+                       config_file: 'config',
+                       git_config_file: Dir.pwd + '/config',
+                       log_file: 'mirror.log')
 
-  log_dir = File.dirname(log_file)
-  FileUtils.mkdir_p log_dir unless File.exist? log_dir
-  logger = Logger.new(log_file)
-  logger.level = ENV['SM_LOG_LEVEL'] || Logger::INFO
-  begin
-    sm = SecureMirror.new(hook_args, config_file, git_config_file, logger)
+    logger = init_logger(log_file)
+    config = JSON.parse(File.read(config_file), symbolize_names: true)
+    repo = GitRepo.new(git_config_file)
+    client = client_for_repo(repo, config[:repo_types])
+    policy_class = policy_from_config(config)
+    return 1 unless policy_class
 
-    # if this is a brand new repo, or not a mirror allow the import
-    if sm.new_repo?
-      logger.info('Brand new repo, cannot read git config info')
-      return 0
-    elsif sm.deletion?
-      logger.info('Allowing branch to be deleted')
-      return 0
-    elsif !sm.mirror?
-      logger.info('Repo %s is not a mirror' % sm.name)
-      return 0
-    end
-
-    # fail on invalid git config
-    if sm.misconfigured?
-      logger.error('Repo %s is misconfigured' % sm.name)
-      return 1
-    end
-
-    # if repo initialization was successful and we trust the change, allow it
-    if sm&.repo&.trusted_change?
-      logger.info('Importing trusted changes from %s' % sm.name)
-      return 0
-    end
+    policy = policy_class.new(
+      config, client, repo, hook_args, logger
+    )
+    policy_in_phase(policy, phase)
   rescue StandardError => e
     # if anything goes wrong, cancel the changes
     logger.error(e)
-    return 1
+    1
   end
-
-  1
 end

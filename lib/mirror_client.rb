@@ -16,6 +16,7 @@
 require 'json'
 require 'digest/sha2'
 
+require 'helpers'
 require 'collaborator'
 
 module SecureMirror
@@ -24,6 +25,14 @@ module SecureMirror
   class ClientServerError < StandardError; end
   class ClientNotFound < StandardError; end
   class ClientGenericError < StandardError; end
+
+  CLIENT_ERRORS = [
+    ClientUnauthorized,
+    ClientForbidden,
+    ClientServerError,
+    ClientNotFound,
+    ClientGenericError
+  ].freeze
 
   # wraps MirrorClient and caches results in memory or to a file
   class CachingMirrorClient
@@ -60,14 +69,10 @@ module SecureMirror
       Time.now + lifetime
     end
 
-    def class_from_string(klass)
-      return Object.const_get(klass) unless klass.include?(':')
-
-      klass.split('::').inject(Object) { |o, c| o.const_get c }
-    end
-
     def restore_hash(data)
-      klass = class_from_string(data[:klass] || data.values.first[:klass])
+      klass = SecureMirror.class_from_string(
+        data[:klass] || data.values.first[:klass]
+      )
       return klass.from_json(data) if data[:klass]
 
       data.map do |key, item|
@@ -76,7 +81,7 @@ module SecureMirror
     end
 
     def restore_array(data)
-      klass = class_from_string(data[0][:klass])
+      klass = SecureMirror.class_from_string(data[0][:klass])
       data.map do |item|
         klass.from_json(item)
       end
