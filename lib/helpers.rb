@@ -17,6 +17,13 @@ require 'logger'
 
 # shared helper/utility methods
 module SecureMirror
+  module Codes
+    OK = 0
+    DENIED = 100
+    CLIENT_ERROR = 200
+    GENERAL_ERROR = 300
+  end
+
   def self.class_from_string(klass)
     return Object.const_get(klass) unless klass.include?(':')
 

@@ -13,16 +13,10 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
+require 'helpers'
 require 'mirror_client'
 
 module SecureMirror
-  module Codes
-    OK = 0
-    DENIED = 100
-    CLIENT_ERROR = 200
-    GENERAL_ERROR = 300
-  end
-
   # defines a policy for mirror security to enforce
   class Policy
     def pre_receive
