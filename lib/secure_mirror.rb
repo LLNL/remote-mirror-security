@@ -14,93 +14,114 @@
 ###############################################################################
 
 require 'json'
-require 'logger'
 require 'fileutils'
 require 'git_repo'
 require 'mirror_client'
+require 'default_policy'
 
+# secure mirror
 module SecureMirror
-  def hook_args(phase)
-    # variables provided by the git hook depend on stage
-    case phase
-    when 'pre-receive', 'post-receive'
-      ARGV.each_slice(3).map do |old_sha, new_sha, ref_name|
-        { old_sha: old_sha, new_sha: new_sha, ref_name: ref_name }
+  # client and policy setup
+  class Setup
+    def github_client
+      require 'github_mirror_client'
+      access_tokens = @config[:repo_types][:github][:access_tokens]
+      GitHubMirrorClient.new(access_tokens[:main],
+                             alt_clients: access_tokens[:external],
+                             config: @config[:repo_types][:github])
+    end
+
+    def caching_client(client)
+      conf = @config[:cache]
+      CachingMirrorClient.new(client,
+                              cache_dir: conf[:dir],
+                              default_expiration: conf[:default_expiration])
+    end
+
+    def client
+      case @repo.url.downcase
+      when /github/
+        client = github_client
       end
-    when 'update'
-      { ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2] }
+      return client unless @config[:cache][:enable]
+
+      caching_client(client)
+    rescue LoadError => e
+      @logger.error('Unable to load client: ' + e.to_s)
+    end
+
+    def policy_class
+      definition = @config[:policy_definition]
+      klass = @config[:policy_class]
+      return DefaultPolicy unless definition && klass
+
+      require definition
+      SecureMirror.class_from_string(klass)
+    end
+
+    def initialize(config, phase, repo, logger)
+      @config = config
+      @phase = phase
+      @repo = repo
+      @logger = logger
     end
   end
 
-  def init_logger(log_file)
-    log_dir = File.dirname(log_file)
-    FileUtils.mkdir_p log_dir unless File.exist? log_dir
-    level = ENV['SM_LOG_LEVEL'] || Logger::INFO
-    Logger.new(log_file, level: level)
+  def mirrored_in_gitlab?
+    gl_repository = ENV['GL_REPOSITORY']
+    raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
+
+    gitlab_project_id = gl_repository.tr('project-', '')
+    query = "SELECT mirror FROM projects WHERE id=#{gitlab_project_id};"
+    `gitlab-psql -d gitlabhq_production -t -c '#{query}'`.strip == 't'
   end
 
-  def github_client(access_tokens)
-    require 'github_mirror_client'
-    GitHubMirrorClient.new(access_tokens[:main],
-                           alt_clients: access_tokens[:external])
+  def mirrored_status_file
+    '.mirrored'
   end
 
-  def caching_client(client, config)
-    CachingMirrorClient.new(client,
-                            cache_dir: config[:dir],
-                            default_expiration: config[:default_expiration])
+  def cache_mirrored_status(mirrored)
+    FileUtils.touch(mirrored_status_file) if mirrored
+    mirrored
   end
 
-  def client_for_repo(repo, config)
-    case repo.url.downcase
-    when /github/
-      client = github_client(config[:github][:access_tokens])
+  def mirrored?
+    File.file?(mirrored_status_file)
+  end
+
+  def remove_mirrored_status
+    mirrored = mirrored?
+    File.delete(mirrored_status_file) if mirrored
+    mirrored
+  end
+
+  def cache_for_platform(platform)
+    case platform
+    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?)
+    else raise(StandardError, 'Unable to determine if repo is a mirror')
     end
-    return client unless config[:cache][:enable]
-
-    caching_client(client, config[:cache])
   end
 
-  def policy_in_phase(policy, phase)
+  def evaluate?(phase, platform)
     case phase
-    when 'pre-receive'
-      policy.pre_receive
-    when 'update'
-      policy.update
-    when 'post-receive'
-      policy.post_receive
+    when 'pre-receive' then cache_for_platform(platform)
+    when 'update' then mirrored?
+    when 'post-receive' then remove_mirrored_status
     end
   end
 
-  def policy_from_config(config)
-    return Policy unless config[:policy_definition]
+  def evaluate_changes(phase, platform, config_file: 'config',
+                       git_config_file: Dir.pwd + '/config')
+    return SecureMirror::Codes::OK unless evaluate?(phase, platform)
 
-    require config[:policy_definition]
-    # TODO, instead of method, allow name to be defined in config
-    load_policy_class
-  rescue LoadError => e
-    puts 'Error loading config: ' + e.to_s
-  end
-
-  def evaluate_changes(phase,
-                       config_file: 'config',
-                       git_config_file: Dir.pwd + '/config',
-                       log_file: 'mirror.log')
-
-    logger = init_logger(log_file)
     config = JSON.parse(File.read(config_file), symbolize_names: true)
     repo = GitRepo.new(git_config_file)
-    client = client_for_repo(repo, config[:repo_types])
-    policy_class = policy_from_config(config)
-    return 1 unless policy_class
-
-    policy = policy_class.new(
-      config, client, repo, hook_args, logger
-    )
-    policy_in_phase(policy, phase)
+    logger = SecureMirror.init_logger(config)
+    setup = Setup.new(config, phase, repo, logger)
+    setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
   rescue StandardError => e
     # if anything goes wrong, cancel the changes
     logger.error(e)
-    1
+    SecureMirror::Codes::GENERAL_ERROR
   end
 end

@@ -15,7 +15,6 @@
 
 require 'helpers'
 require 'policy'
-require 'mirror_client'
 
 module SecureMirror
   # defines a policy for mirror security to enforce
@@ -28,18 +27,24 @@ module SecureMirror
     end
 
     def update
-      return Codes::OK if protected_branch? && collabs_trusted?
-      return Codes::OK if vetted_change?
-
+      if protected_branch? && collabs_trusted?
+        @logger.info('automatically syncing protected branches')
+        return Codes::OK
+      elsif vetted_by
+        @logger.info(format('Changes for %<sha>s vetted by %<user>s',
+                            sha: hook_args[:future_sha],
+                            user: vetted_by.commenter))
+        return Codes::OK
+      end
       Codes::DENIED
     end
 
     def org_members
-      @client.org_members(@config[:trusted_org])
+      @org_members ||= @client.org_members(@config[:trusted_org])
     end
 
     def collaborators
-      @client.collaborators(@repo.name)
+      @collaborators ||= @client.collaborators(@repo.name)
     end
 
     def collabs_trusted?
@@ -47,7 +52,7 @@ module SecureMirror
     end
 
     def branches
-      @client.branches(@repo.name, hook_args)
+      @branches ||= @client.branches(@repo.name, hook_args)
     end
 
     def branch_name
@@ -59,39 +64,31 @@ module SecureMirror
     end
 
     def commit
-      @client.commit(@repo.name, hook_args[:future_sha])
+      @commit ||= @client.commit(@repo.name, hook_args[:future_sha])
     end
 
     def comments
-      @client.review_comments(@repo.name, hook_args[:future_sha],
-                              since: commit.date)
+      @comments ||= @client.review_comments(@repo.name, hook_args[:future_sha],
+                                            since: commit.date)
     end
 
     def signoff_bodies
-      @client.config[:signoff_bodies]&.map { |s| [s.downcase, true] }.to_h
+      @signoff_bodies ||= @client.config[:signoff_bodies]&.map do |s|
+        [s.downcase, true]
+      end.to_h
     end
 
     def signoff?(body)
       signoff_bodies.include? body.downcase
     end
 
-    def vetted_change?
-      return false unless commit
+    def vetted_by
+      return nil unless commit
 
-      comments.each do |comment|
-        commenter = comment.commenter
-        next unless org_members[commenter]&.trusted
-
-        next unless signoff? comment.body
-
-        next unless comment.date > commit.date
-
-        @logger.info(format('Changes for %<sha>s vetted by %<user>s',
-                            sha: future_sha, user: commenter))
-        return true
-      end
-      false
+      comments
+        .select { |c| org_members[c.commenter]&.trusted }
+        .select { |c| signoff?(c.body) && c.date > commit.date }
+        .first
     end
   end
 end
-

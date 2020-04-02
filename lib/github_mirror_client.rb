@@ -40,6 +40,7 @@ module SecureMirror
       Octokit::ServerError
     ]
 
+    attr_reader :config
     attr_reader :github_errors
 
     def error_for_github_error(github_error)
@@ -122,7 +123,8 @@ module SecureMirror
       )
     end
 
-    def initialize(token, alt_tokens: nil)
+    def initialize(token, alt_tokens: nil, config: nil)
+      @config = config
       @client = Octokit::Client.new(auto_paginate: true, access_token: token)
       return unless alt_tokens
 

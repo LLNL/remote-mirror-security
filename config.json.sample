@@ -1,16 +1,17 @@
 {
-    "client": {
-        "cache": {
-            "enable": true,
-            "dir": ".sm",
-            "default_expiration": 300,
-        }
+    "log_file": "/tmp/mirror.log",
+    "log_level": "INFO",
+    "cache": {
+        "enable": true,
+        "dir": ".sm",
+        "default_expiration": 300
     },
-    "policy_definition": "sample.rb",
+    "policy_definition": "default_policy.rb",
+    "policy_class_name": "DefaultPolicy",
     "repo_types": {
         "github": {
-        "trusted_org": "Foo",
-        "signoff_body": "LGTM",
+            "trusted_org": "Foo",
+            "signoff_bodies": ["LGTM"],
             "access_tokens": {
                 "main": "",
                 "external": {
