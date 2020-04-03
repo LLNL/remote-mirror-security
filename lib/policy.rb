@@ -20,17 +20,17 @@ module SecureMirror
   # defines a policy for mirror security to enforce
   class Policy
     def pre_receive
-      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
+      @logger.debug(format('evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
     def post_receive
-      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
+      @logger.debug(format('evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
     def update
-      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
+      @logger.debug(format('evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
@@ -76,7 +76,9 @@ module SecureMirror
     end
 
     def evaluate
-      @logger.debug(format('In phase %<phase>s', phase: @phase))
+      @logger.debug(format('%<pclass>s : in phase %<phase>s',
+                           pclass: self.class.name,
+                           phase: @phase))
       case @phase
       when 'pre-receive'
         log_format_for_pre_receive

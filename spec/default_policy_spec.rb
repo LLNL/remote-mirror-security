@@ -147,7 +147,6 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
                                                 @repo, @logger)
       expect(@policy.vetted_by).not_to be nil
       expect(@policy.vetted_by.commenter).to eq trusted_member
-
     end
 
     it 'does not vet a commit from an untrusted user' do
@@ -165,7 +164,6 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
       @policy = SecureMirror::DefaultPolicy.new(@config, 'update', @client,
                                                 @repo, @logger)
       expect(@policy.vetted_by).to be nil
-
     end
 
     it 'does not vet a commit when the trusted comment is before the commit' do
