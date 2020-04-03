@@ -48,8 +48,6 @@ module SecureMirror
     end
 
     def name
-      return @repo_name if @repo_name
-
       return '' if mirror_name.empty?
 
       url = @git_config[mirror_name]['url']
@@ -57,10 +55,10 @@ module SecureMirror
       # case examples:
       #   git@github.com:LLNL/SSHSpawner.git
       #   https://github.com/tgmachina/test-mirror.git
-      @repo_name = url.split(':')[-1]
-                      .gsub('.git', '')
-                      .split('/')[-2..-1]
-                      .join('/')
+      @name ||= url.split(':')[-1]
+                   .gsub('.git', '')
+                   .split('/')[-2..-1]
+                   .join('/')
     end
 
     def initialize(git_config_file)
