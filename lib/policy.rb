@@ -20,47 +20,79 @@ module SecureMirror
   # defines a policy for mirror security to enforce
   class Policy
     def pre_receive
+      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
     def post_receive
+      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
     def update
+      @logger.debug(format('Evaluating %<phase>s', phase: @phase))
       Codes::OK
     end
 
     def hook_args
       # variables provided by the git hook depend on stage
-      return @args if @args
-
       case @phase
       when 'pre-receive', 'post-receive'
-        @args = ARGV.each_slice(3).map do |current_sha, future_sha, ref_name|
-          {
-            current_sha: current_sha,
-            future_sha: future_sha,
-            ref_name: ref_name
-          }
-        end
+        @hook_args ||=
+          ARGV.each_slice(3).map do |current_sha, future_sha, ref_name|
+            {
+              current_sha: current_sha,
+              future_sha: future_sha,
+              ref_name: ref_name
+            }
+          end
       when 'update'
-        @args = { ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2] }
+        @hook_args ||= {
+          ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2]
+        }
       end
+    end
+
+    def log_format_for_pre_receive
+      original_formatter = Logger::Formatter.new
+      @logger.formatter = proc { |severity, datetime, progname, msg|
+        m = "#{@repo.name} : #{msg.dump}"
+        original_formatter.call(severity, datetime, progname, m)
+      }
+    end
+
+    def log_format_for_update
+      original_formatter = Logger::Formatter.new
+      ref = hook_args[:ref_name]
+      short_sha = hook_args[:future_sha][0..6]
+      @logger.formatter = proc { |severity, datetime, progname, msg|
+        m = "#{@repo.name} : #{ref} : #{short_sha} : #{msg.dump}"
+        original_formatter.call(severity, datetime, progname, m)
+      }
+    end
+
+    def log_format_for_post_receive
+      log_format_for_pre_receive
     end
 
     def evaluate
       @logger.debug(format('In phase %<phase>s', phase: @phase))
       case @phase
-      when 'pre-receive' then pre_receive
-      when 'update' then update
-      when 'post-receive' then post_receive
+      when 'pre-receive'
+        log_format_for_pre_receive
+        pre_receive
+      when 'update'
+        log_format_for_update
+        update
+      when 'post-receive'
+        log_format_for_post_receive
+        post_receive
       end
     rescue *SecureMirror::CLIENT_ERRORS => e
-      @logger.error('Uncaught client error: ' + e.to_s)
+      @logger.error("Uncaught client error: #{e}\n#{e.backtrace.join("\n")}")
       Codes::CLIENT_ERROR
     rescue StandardError => e
-      @logger.error('Uncaught error: ' + e.to_s)
+      @logger.error("Uncaught error: #{e}\n#{e.backtrace.join("\n")}")
       Codes::GENERAL_ERROR
     end
 
@@ -70,7 +102,6 @@ module SecureMirror
       @client = client
       @repo = repo
       @logger = logger
-      @args = nil
     end
   end
 end

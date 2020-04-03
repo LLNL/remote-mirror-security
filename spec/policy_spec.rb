@@ -16,20 +16,39 @@
 require 'ostruct'
 require 'logger'
 require 'policy'
+require 'git_repo'
+
+ARGV = %w[
+  ref
+  0000000000000000000000000000000000000000
+  1212121212121212121212121212121212121212
+].freeze
 
 RSpec.describe SecureMirror::Policy, '#unit' do
   before(:each) do
+    @config = JSON.parse(File.read(__dir__ + '/fixtures/config.json'),
+                         symbolize_names: true)
+    @repo = SecureMirror::GitRepo.new(__dir__ + '/fixtures/config')
     @logger = Logger.new(STDOUT)
-    @policy = SecureMirror::Policy.new(nil, 'pre-receive', nil, nil, @logger)
+    @policy = SecureMirror::Policy.new(@config, 'pre-receive', nil, @repo,
+                                       @logger)
   end
 
   context 'interface' do
-    it 'responds to the three git hook phases' do
-      @policy = SecureMirror::Policy.new(nil, 'pre-receive', nil, nil, @logger)
+    it 'responds to pre-receive' do
+      @policy = SecureMirror::Policy.new(@config, 'pre-receive', nil, @repo,
+                                         @logger)
       expect(@policy.evaluate).to eq SecureMirror::Codes::OK
-      @policy = SecureMirror::Policy.new(nil, 'update', nil, nil, @logger)
+    end
+
+    it 'responds to update' do
+      @policy = SecureMirror::Policy.new(@config, 'update', nil, @repo, @logger)
       expect(@policy.evaluate).to eq SecureMirror::Codes::OK
-      @policy = SecureMirror::Policy.new(nil, 'post-receive', nil, nil, @logger)
+    end
+
+    it 'responds to post-receive' do
+      @policy = SecureMirror::Policy.new(@config, 'post-receive', nil, @repo,
+                                         @logger)
       expect(@policy.evaluate).to eq SecureMirror::Codes::OK
     end
   end
