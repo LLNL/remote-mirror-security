@@ -15,6 +15,7 @@
 
 require 'helpers'
 require 'policy'
+require 'mirror_client'
 
 module SecureMirror
   # defines a policy for mirror security to enforce
@@ -23,19 +24,22 @@ module SecureMirror
       # make calls here so that they are cached before update
       org_members
       collaborators
+      if @logger.debug?
+        untrusted_collabs.each { |c| @logger.debug("#{c.name} is untrusted!") }
+      end
       Codes::OK
     end
 
     def update
-      if protected_branch? && collabs_trusted?
-        @logger.info('automatically syncing protected branches')
+      if commit.protected_branch?(branch_name) && collabs_trusted?
+        @logger.info('automatically syncing protected branch')
         return Codes::OK
       elsif vetted_by
-        @logger.info(format('Changes for %<sha>s vetted by %<user>s',
-                            sha: hook_args[:future_sha],
+        @logger.info(format('changes vetted by %<user>s',
                             user: vetted_by.commenter))
         return Codes::OK
       end
+      @logger.info('changes denied')
       Codes::DENIED
     end
 
@@ -45,22 +49,23 @@ module SecureMirror
 
     def collaborators
       @collaborators ||= @client.collaborators(@repo.name)
+    rescue ClientGenericError => e
+      @logger.debug("failed getting collaborators: #{e}")
+      @collaborators = []
+    end
+
+    def untrusted_collabs
+      collaborators.reject { |name, _| org_members[name]&.trusted }
     end
 
     def collabs_trusted?
-      collaborators.all? { |name, _| org_members[name].trusted }
-    end
+      return false if collaborators.empty?
 
-    def branches
-      @branches ||= @client.branches(@repo.name, hook_args)
+      collaborators.all? { |name, _| org_members[name]&.trusted }
     end
 
     def branch_name
       hook_args[:ref_name].split('/')[-1]
-    end
-
-    def protected_branch?
-      branches.any? { |b| b[:name] == branch_name && b[:protection] }
     end
 
     def commit
@@ -70,6 +75,9 @@ module SecureMirror
     def comments
       @comments ||= @client.review_comments(@repo.name, hook_args[:future_sha],
                                             since: commit.date)
+    rescue ClientGenericError => e
+      @logger.debug("failed getting comments: #{e}")
+      @comments = []
     end
 
     def signoff_bodies
@@ -79,7 +87,7 @@ module SecureMirror
     end
 
     def signoff?(body)
-      signoff_bodies.include? body.downcase
+      signoff_bodies.key? body.downcase
     end
 
     def vetted_by
