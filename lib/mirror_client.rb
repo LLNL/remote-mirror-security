@@ -20,11 +20,11 @@ require 'helpers'
 require 'collaborator'
 
 module SecureMirror
-  class ClientUnauthorized < StandardError; end
-  class ClientForbidden < StandardError; end
-  class ClientServerError < StandardError; end
-  class ClientNotFound < StandardError; end
   class ClientGenericError < StandardError; end
+  class ClientUnauthorized < ClientGenericError; end
+  class ClientForbidden < ClientGenericError; end
+  class ClientServerError < ClientGenericError; end
+  class ClientNotFound < ClientGenericError; end
 
   CLIENT_ERRORS = [
     ClientUnauthorized,
