@@ -16,75 +16,60 @@
 require 'logger'
 require 'ostruct'
 require 'secure_mirror'
-require 'github_repo'
+require 'default_policy'
 
-RSpec.describe SecureMirror, '#init' do
+RSpec.describe SecureMirror, '#unit' do
   before(:each) do
-    @repo_name = 'LLNL/Umpire'
-    @hook_args = {
-      ref_name: '/refs/head/backtrace',
-      current_sha: '323c557025586778867c4574698bca8df760c2b7',
-      future_sha: 'b48659a8c2b6555b7a6299fbddda0fef6adf7105'
-    }
-    @config_file = __dir__ + '/fixtures/config.json'
-    @git_config_file = __dir__ + '/fixtures/github-config'
-    @log_file = '/tmp/mirror.log'
-    @missing_dir_log_file = '/tmp/foo/mirror.log'
-    @unsupported_git_config_file = __dir__ + '/fixtures/unsupported-config'
-    @missing_file = '/tmp/nonexistent'
-    @logger = Logger.new(@log_file)
   end
 
   after(:each) do
-    [@log_file, @missing_dir_log_file].each do |f|
-      File.unlink f if File.exist? f
+    f = SecureMirror.mirrored_status_file
+    File.unlink f if File.exist? f
+  end
+
+  context 'helpers' do
+    it 'caches mirroring status to a known file' do
+      expect(SecureMirror.cache_mirrored_status(true)).to be true
+      expect(File.file?(SecureMirror.mirrored_status_file)).to be true
+    end
+
+    it 'does not create a file if the mirror status is false' do
+      expect(SecureMirror.cache_mirrored_status(false)).to be false
+      expect(File.file?(SecureMirror.mirrored_status_file)).to be false
+    end
+
+    it 'can remove cached mirror status' do
+      SecureMirror.cache_mirrored_status(true)
+      expect(SecureMirror.remove_mirrored_status).to be true
+      expect(File.file?(SecureMirror.mirrored_status_file)).to be false
+    end
+  end
+end
+
+RSpec.describe SecureMirror::Setup, '#unit' do
+  before(:each) do
+    @config = JSON.parse(File.read(__dir__ + '/fixtures/config.json'),
+                         symbolize_names: true)
+    @repo = SecureMirror::GitRepo.new(__dir__ + '/fixtures/config')
+    @logger = Logger.new(STDOUT)
+    @setup = SecureMirror::Setup.new(@config, @repo, @logger)
+  end
+
+  after(:each) do
+  end
+
+  context 'policy setup' do
+    it 'gets a default policy class when none is defined in config' do
+      @config[:policy_definition] = nil
+      @config[:policy_class] = nil
+      @setup = SecureMirror::Setup.new(@config, @repo, @logger)
+      expect(@setup.policy_class).to be SecureMirror::DefaultPolicy
     end
   end
 
-  context 'creates a SecureMirror object' do
-    it 'reads in various config properties' do
-      allow(GitHubRepo).to receive(:new) { {} }
-      sm = SecureMirror.new(@hook_args, @config_file, @git_config_file,
-                            @logger)
-      expect(sm)
-      expect(sm.name).to eq(@repo_name)
-      expect(sm.misconfigured?).to be(false)
-      expect(sm.mirror?).to be(true)
-      expect(sm.new_repo?).to be(false)
-    end
-
-    it 'is marked as a new repo when failing to load the git config' do
-      sm = SecureMirror.new(@hook_args, @config_file, @missing_file, @logger)
-      expect(sm)
-      expect(sm.new_repo?).to be(true)
-    end
-
-    it 'raises an error when unable to load the config file' do
-      expect do
-        SecureMirror.new(@hook_args, @missing_file, @git_config_file, @logger)
-      end.to raise_error(Errno::ENOENT)
-    end
-
-    it 'has its repo set to nil when the remote is unsupported' do
-      sm = SecureMirror.new(@hook_args, @config_file,
-                            @unsupported_git_config_file, @logger)
-      expect(sm)
-      expect(sm.repo).to be(nil)
-    end
-  end
-
-  context 'evaluates inbound changes' do
-    it 'initializes the logger and reads in config' do
-      result = evaluate_changes(config_file: @config_file,
-                                log_file: @log_file)
-      expect(result).to be 0
-    end
-
-    it 'creates the log directory if it does not already exist' do
-      result = evaluate_changes(config_file: @config_file,
-                                log_file: @missing_dir_log_file)
-      expect(result).to be 0
-      expect(File.exist?(@missing_dir_log_file)).to be true
+  context 'client setup' do
+    it 'sets up and returns a client based on config (github)' do
+      expect(@setup.client).not_to be nil
     end
   end
 end

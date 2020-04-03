@@ -27,7 +27,7 @@ module SecureMirror
       require 'github_mirror_client'
       access_tokens = @config[:repo_types][:github][:access_tokens]
       GitHubMirrorClient.new(access_tokens[:main],
-                             alt_clients: access_tokens[:external],
+                             alt_tokens: access_tokens[:external],
                              config: @config[:repo_types][:github])
     end
 
@@ -42,6 +42,8 @@ module SecureMirror
       case @repo.url.downcase
       when /github/
         client = github_client
+      else
+        raise(StandardError, 'Unable to find client using git config')
       end
       return client unless @config[:cache][:enable]
 
@@ -59,9 +61,8 @@ module SecureMirror
       SecureMirror.class_from_string(klass)
     end
 
-    def initialize(config, phase, repo, logger)
+    def initialize(config, repo, logger)
       @config = config
-      @phase = phase
       @repo = repo
       @logger = logger
     end
@@ -76,33 +77,33 @@ module SecureMirror
     `gitlab-psql -d gitlabhq_production -t -c '#{query}'`.strip == 't'
   end
 
-  def mirrored_status_file
+  def self.mirrored_status_file
     '.mirrored'
   end
 
-  def cache_mirrored_status(mirrored)
+  def self.cache_mirrored_status(mirrored)
     FileUtils.touch(mirrored_status_file) if mirrored
     mirrored
   end
 
-  def mirrored?
+  def self.mirrored?
     File.file?(mirrored_status_file)
   end
 
-  def remove_mirrored_status
+  def self.remove_mirrored_status
     mirrored = mirrored?
     File.delete(mirrored_status_file) if mirrored
     mirrored
   end
 
-  def cache_for_platform(platform)
+  def self.cache_for_platform(platform)
     case platform
     when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?)
     else raise(StandardError, 'Unable to determine if repo is a mirror')
     end
   end
 
-  def evaluate?(phase, platform)
+  def self.evaluate?(phase, platform)
     case phase
     when 'pre-receive' then cache_for_platform(platform)
     when 'update' then mirrored?
@@ -110,14 +111,14 @@ module SecureMirror
     end
   end
 
-  def evaluate_changes(phase, platform, config_file: 'config',
-                       git_config_file: Dir.pwd + '/config')
+  def self.evaluate_changes(phase, platform, config_file: 'config.json',
+                            git_config_file: Dir.pwd + '/config')
     return SecureMirror::Codes::OK unless evaluate?(phase, platform)
 
     config = JSON.parse(File.read(config_file), symbolize_names: true)
     repo = GitRepo.new(git_config_file)
     logger = SecureMirror.init_logger(config)
-    setup = Setup.new(config, phase, repo, logger)
+    setup = Setup.new(config, repo, logger)
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
   rescue StandardError => e
     # if anything goes wrong, cancel the changes
