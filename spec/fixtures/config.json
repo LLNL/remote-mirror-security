@@ -1,11 +1,21 @@
 {
+    "log_file": "/tmp/mirror.log",
+    "log_level": "INFO",
+    "cache": {
+        "enable": true,
+        "dir": ".sm",
+        "default_expiration": 300
+    },
+    "policy_definition": "default_policy.rb",
+    "policy_class_name": "DefaultPolicy",
     "repo_types": {
         "github": {
-        "trusted_org": "LLNL",
-        "signoff_body": "LGTM",
+            "trusted_org": "Foo",
+            "signoff_bodies": ["LGTM"],
             "access_tokens": {
-                "main": "TOKEN_GOES_HERE",
-                "external": "TOKEN_GOES_HERE"
+                "main": "",
+                "external": {
+                }
             }
         }
     }
