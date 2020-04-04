@@ -146,7 +146,7 @@ module SecureMirror
     attr_accessor :client
     attr_accessor :alt_clients
 
-    def org_members(org, client_name: '', expires: nil)
+    def org_members(org: '', client_name: '', expires: nil)
       raise NotImplementedError
     end
 

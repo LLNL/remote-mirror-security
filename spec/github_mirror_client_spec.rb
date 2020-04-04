@@ -46,7 +46,7 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
       allow(@mirror_client.client).to receive(:org_members) do |org_name, hash|
         mock_members(org_name, hash)
       end
-      members = @mirror_client.org_members(@org)
+      members = @mirror_client.org_members(org: @org)
       members.each do |name, member|
         expect(member.name).not_to be nil
         expect(member.name).to eq name
@@ -93,10 +93,10 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
       end
 
       expect do
-        @mirror_client.org_members(@org)
+        @mirror_client.org_members(org: @org)
       end.to raise_error(SecureMirror::ClientUnauthorized)
 
-      members = @mirror_client.org_members(@org, client_name: 'bar')
+      members = @mirror_client.org_members(org: @org, client_name: 'bar')
       members.each do |name, member|
         expect(member.name).not_to be nil
         expect(member.name).to eq name
@@ -139,11 +139,12 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#cache' do
       allow(@github_client.client).to receive(:org_members) do |org_name, hash|
         mock_members(org_name, hash)
       end
-      @mirror_client.org_members(@org)
-      key = @mirror_client.cache_key('org_members', [@org].to_s)
+      args = { org: @org }
+      @mirror_client.org_members(**args)
+      key = @mirror_client.cache_key('org_members', [args].to_s)
       expect(File.exist?(@mirror_client.cache_file(key))).to be true
 
-      members = @mirror_client.org_members(@org, expires: 5 * 60)
+      members = @mirror_client.org_members(org: @org, expires: 5 * 60)
       # ONE call to org_members actually requires TWO api calls: one to find
       # all non-2fa members then one for all members of the org
       expect(@github_client.client).to have_received(:org_members).twice
