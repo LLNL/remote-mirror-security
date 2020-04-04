@@ -68,7 +68,7 @@ module SecureMirror
     end
   end
 
-  def mirrored_in_gitlab?
+  def self.mirrored_in_gitlab?
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
