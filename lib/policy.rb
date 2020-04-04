@@ -14,6 +14,7 @@
 ###############################################################################
 
 require 'helpers'
+require 'fileutils'
 require 'mirror_client'
 
 module SecureMirror
@@ -26,12 +27,18 @@ module SecureMirror
 
     def post_receive
       @logger.debug(format('evaluating %<phase>s', phase: @phase))
+      clear_cache
       Codes::OK
     end
 
     def update
       @logger.debug(format('evaluating %<phase>s', phase: @phase))
       Codes::OK
+    end
+
+    def clear_cache
+      cache_dir = @config[:cache][:dir]
+      FileUtils.rm_rf cache_dir if File.exist?(cache_dir)
     end
 
     def hook_args
