@@ -44,11 +44,11 @@ module SecureMirror
     end
 
     def org_members
-      @org_members ||= @client.org_members
+      @org_members ||= @client.org_members(expires: 300)
     end
 
     def collaborators
-      @collaborators ||= @client.collaborators(@repo.name)
+      @collaborators ||= @client.collaborators(@repo.name, expires: 300)
     rescue ClientGenericError => e
       @logger.debug("failed getting collaborators: #{e}")
       @collaborators = []

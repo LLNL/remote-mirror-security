@@ -41,7 +41,7 @@ module SecureMirror
     attr_accessor :config
     attr_accessor :default_expiration
 
-    def initialize(client, cache_dir: '.sm', default_expiration: 5 * 60)
+    def initialize(client, cache_dir: '.sm', default_expiration: 30)
       @cache = {}
       @client = client
       @config = client.config
