@@ -89,13 +89,21 @@ module SecureMirror
       end
     end
 
+    def restorable_array_data?(data)
+      !data.empty? && data[0][:klass]
+    end
+
+    def restorable_hash_data?(data)
+      data[:klass] || !data.values.empty? && data.values.first[:klass]
+    end
+
     def restore_objects(data)
       if data.is_a?(Array)
-        return data unless data[0][:klass]
+        return data unless restorable_array_data?(data)
 
         restore_array(data)
       elsif data.is_a?(Hash)
-        return data unless data[:klass] || data.values.first[:klass]
+        return data unless restorable_hash_data?(data)
 
         restore_hash(data)
       end

@@ -83,7 +83,7 @@ RSpec.describe SecureMirror::CachingMirrorClient, '#unit' do
     end
   end
 
-  context 'restores previously serialized objects' do
+  context 'serialization' do
     it 'can restore a hash of objects from json' do
       data = JSON.parse(
         JSON.dump((1..1000).map { |i| [i, MockObject.new] }.to_h),
@@ -109,6 +109,18 @@ RSpec.describe SecureMirror::CachingMirrorClient, '#unit' do
       )
       restored = @mirror_client.restore_objects(data)
       expect(restored.first.is_a?(MockObject)).to be true
+    end
+
+    it 'can restore an empty hash from json' do
+      data = {}
+      restored = @mirror_client.restore_objects(data)
+      expect(restored.empty?).to be true
+    end
+
+    it 'can restore an empty array from json' do
+      data = []
+      restored = @mirror_client.restore_objects(data)
+      expect(restored.empty?).to be true
     end
   end
 
