@@ -142,4 +142,35 @@ RSpec.describe SecureMirror::CachingMirrorClient, '#unit' do
       expect(cached).to be data
     end
   end
+
+  context 'cached call' do
+    it 'caches a call' do
+      allow(@client).to receive(:test) { [] }
+      @mirror_client = SecureMirror::CachingMirrorClient.new(
+        @client,
+        cache_dir: @cache_dir
+      )
+      @mirror_client.test('foo', 'bar')
+      expect(@client).to have_received(:test).once
+      @mirror_client.test('foo', 'bar')
+      # should not receive it again
+      expect(@client).to have_received(:test).once
+      @mirror_client.cache = {}
+      @mirror_client.test('foo', 'bar')
+      # should not receive it again fulfilled from file
+      expect(@client).to have_received(:test).once
+    end
+
+    it 'repeats the call if the cache has expired' do
+      allow(@client).to receive(:test) { [] }
+      @mirror_client = SecureMirror::CachingMirrorClient.new(
+        @client,
+        cache_dir: @cache_dir
+      )
+      @mirror_client.test('foo', 'bar', expires: 0)
+      expect(@client).to have_received(:test).once
+      @mirror_client.test('foo', 'bar', expires: 0)
+      expect(@client).to have_received(:test).twice
+    end
+  end
 end

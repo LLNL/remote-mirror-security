@@ -111,7 +111,7 @@ module SecureMirror
 
     def read_cache(key)
       cached = @cache[key]
-      return cached if cached && cached[:expires] >= Time.now
+      return cached if cached
 
       return unless File.exist?(cache_file(key))
 
@@ -134,7 +134,7 @@ module SecureMirror
       expires = strip_expires(args)
       key = cache_key(method, args.to_s)
       cached = read_cache(key)
-      return cached[:data] if cached
+      return cached[:data] if cached && cached[:expires] > Time.now
 
       write_cache(key,
                   expires: expires,
