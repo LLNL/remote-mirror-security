@@ -13,8 +13,10 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
+require 'yaml'
 require 'json'
 require 'fileutils'
+require 'helpers'
 require 'git_repo'
 require 'mirror_client'
 require 'default_policy'
@@ -68,13 +70,35 @@ module SecureMirror
     end
   end
 
-  def self.mirrored_in_gitlab?
+  def self.gitlab_shell_path
+    omnibus_path = '/opt/gitlab/embedded/service/gitlab-shell'
+    source_path = '/home/git/gitlab-shell'
+    return omnibus_path if File.exist?(omnibus_path)
+
+    source_path
+  end
+
+  def self.gitlab_shell_config
+    YAML.load_file(File.join(gitlab_shell_path, 'config.yml'))
+  end
+
+  def self.gitlab_api_url
+    base = gitlab_shell_config['gitlab_url'] || 'http://localhost'
+    "#{base}/api/v4"
+  end
+
+  def self.mirrored_in_gitlab?(token)
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
-    gitlab_project_id = gl_repository.tr('project-', '')
-    query = "SELECT mirror FROM projects WHERE id=#{gitlab_project_id};"
-    `gitlab-psql -d gitlabhq_production -t -c '#{query}'`.strip == 't'
+    project = gl_repository.tr('project-', '')
+    url = "#{gitlab_api_url}/projects/#{project}"
+    headers = { 'PRIVATE-TOKEN': token }
+    resp = SecureMirror.http_get(url, headers: headers)
+
+    raise(StandardError, 'mirror info unavailable') unless resp.code == '200'
+
+    JSON.parse(resp.body)['mirror']
   end
 
   def self.mirrored_status_file
@@ -96,33 +120,35 @@ module SecureMirror
     mirrored
   end
 
-  def self.cache_for_platform(platform)
+  def self.cache_for_platform(platform, token)
     case platform
-    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?)
+    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?(token))
     else raise(StandardError, 'Unable to determine if repo is a mirror')
     end
   end
 
-  def self.evaluate?(phase, platform)
+  def self.evaluate?(phase, platform, token)
     case phase
-    when 'pre-receive' then cache_for_platform(platform)
+    when 'pre-receive' then cache_for_platform(platform, token)
     when 'update' then mirrored?
     when 'post-receive' then remove_mirrored_status
     end
   end
 
-  def self.evaluate_changes(phase, platform, config_file: 'config.json',
-                            git_config_file: Dir.pwd + '/config')
-    return SecureMirror::Codes::OK unless evaluate?(phase, platform)
-
+  def self.evaluate_changes(phase, platform,
+                            config_file: 'config.json',
+                            git_config_file: Dir.pwd + '/config',
+                            token: nil)
     config = JSON.parse(File.read(config_file), symbolize_names: true)
-    repo = GitRepo.new(git_config_file)
     logger = SecureMirror.init_logger(config)
+    return SecureMirror::Codes::OK unless evaluate?(phase, platform, token)
+
+    repo = GitRepo.new(git_config_file)
     setup = Setup.new(config, repo, logger)
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
   rescue StandardError => e
     # if anything goes wrong, cancel the changes
-    logger.error(e)
+    logger.error("#{e}:\n#{e.backtrace.join("\n")}")
     SecureMirror::Codes::GENERAL_ERROR
   end
 end
