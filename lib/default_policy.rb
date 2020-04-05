@@ -44,7 +44,7 @@ module SecureMirror
     end
 
     def org_members
-      @org_members ||= @client.org_members(@config[:trusted_org])
+      @org_members ||= @client.org_members
     end
 
     def collaborators
