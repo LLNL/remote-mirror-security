@@ -38,11 +38,13 @@ module SecureMirror
   class CachingMirrorClient
     attr_accessor :cache
     attr_accessor :client
+    attr_accessor :config
     attr_accessor :default_expiration
 
     def initialize(client, cache_dir: '.sm', default_expiration: 5 * 60)
       @cache = {}
       @client = client
+      @config = client.config
       @cache_dir = cache_dir
       @default_expiration = default_expiration
       FileUtils.mkdir_p @cache_dir

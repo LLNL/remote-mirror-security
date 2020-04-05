@@ -21,7 +21,7 @@ require 'mirror_client'
 # serializable mock object
 class MockObject
   def as_json(*)
-    { klass: self.class.name, test: 'foo' }
+    { klass: self.class.name, test: 'foo', bar: [{ name: 'baz' }] }
   end
 
   def to_json(*options)
@@ -37,9 +37,10 @@ end
 
 RSpec.describe SecureMirror::CachingMirrorClient, '#unit' do
   before(:each) do
-    @client = {}
+    @client = double
     @cache_dir = '/tmp/test'
     FileUtils.rm_rf @cache_dir if File.exist? @cache_dir
+    allow(@client).to receive(:config)
     @mirror_client = SecureMirror::CachingMirrorClient.new(
       @client,
       cache_dir: @cache_dir

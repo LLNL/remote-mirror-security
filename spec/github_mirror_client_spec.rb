@@ -38,7 +38,12 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
     @alt_tokens = {
       bar: 'BAR'
     }
-    @mirror_client = SecureMirror::GitHubMirrorClient.new(@token, alt_tokens: @alt_tokens)
+    @config = JSON.parse(File.read(__dir__ + '/fixtures/config.json'),
+                         symbolize_names: true)
+    @mirror_client = SecureMirror::GitHubMirrorClient.new(
+      @token,
+      alt_tokens: @alt_tokens,
+      config: @config)
   end
 
   context 'exposes a simplified subset of data from GitHub' do
@@ -119,10 +124,13 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#cache' do
       bar: 'BAR'
     }
     @cache_dir = '/tmp/secure-mirror-tests'
+    @config = JSON.parse(File.read(__dir__ + '/fixtures/config.json'),
+                         symbolize_names: true)
     FileUtils.mkdir_p @cache_dir
     @github_client = SecureMirror::GitHubMirrorClient.new(
       @token,
-      alt_tokens: @alt_tokens
+      alt_tokens: @alt_tokens,
+      config: @config[:repo_types][:github]
     )
     @mirror_client = SecureMirror::CachingMirrorClient.new(
       @github_client,
@@ -135,6 +143,11 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#cache' do
   end
 
   context 'the client can have calls cached generically' do
+    it 'does not cache calls for client config' do
+      @mirror_client.config
+      expect(Dir.empty?(@cache_dir)).to be true
+    end
+
     it 'can cache results for repeated calls to a method' do
       allow(@github_client.client).to receive(:org_members) do |org_name, hash|
         mock_members(org_name, hash)
