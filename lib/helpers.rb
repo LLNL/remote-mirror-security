@@ -14,6 +14,7 @@
 ###############################################################################
 
 require 'logger'
+require 'net/http'
 
 # shared helper/utility methods
 module SecureMirror
@@ -40,5 +41,19 @@ module SecureMirror
     setup_log_dir(log_file)
     level = ENV['SM_LOG_LEVEL'] || config[:log_level] || Logger::INFO
     Logger.new(log_file, level: level)
+  end
+
+  def self.http_get(url, headers: {}, options: {})
+    uri = URI.parse(url)
+    http = http_client(uri, options)
+    request = Net::HTTP::Get.new(uri.request_uri, headers)
+    http.start { http.request(request) }
+  end
+
+  def self.http_client(uri, options)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.read_timeout = options[:read_timeout] || 15
+    http.use_ssl = true if uri.is_a?(URI::HTTPS)
+    http
   end
 end
