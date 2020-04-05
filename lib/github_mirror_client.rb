@@ -109,7 +109,7 @@ module SecureMirror
       pulls = client.commit_pulls(repo, sha, accept: preview_header)
       # TODO: this call does not abide by auto-pagination for some reason...
       # TODO: will this fail if since is nil?
-      return unless pulls&.first
+      return [] unless pulls&.first
 
       comments = client.get(pulls.first.rels[:comments].href, since: since)
       # PR comments are issue comments. Issue comments only sort ascending...
