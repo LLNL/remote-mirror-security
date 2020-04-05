@@ -50,7 +50,7 @@ module SecureMirror
       @@mirror_error_map[error_name]
     end
 
-    def org_members(org: '', client_name: '')
+    def org_members(org: nil, client_name: '')
       client = @alt_clients[client_name.to_sym] || @client
       org ||= @config[:trusted_org]
       no_two_factor = client.org_members(org, filter: '2fa_disabled')
