@@ -27,30 +27,30 @@ module SecureMirror
       @git_config.nil?
     end
 
-    def mirror?
-      !@mirror_cfg.empty?
+    def remote?
+      !@remote_cfg.empty?
     end
 
     def misconfigured?
-      @mirror_cfg.size > 1
+      @remote_cfg.size > 1
     end
 
-    def mirror_name
-      return '' unless mirror?
+    def remote_name
+      return '' unless remote?
 
-      @mirror_cfg[0][0]
+      @remote_cfg[0][0]
     end
 
     def url
-      return '' if mirror_name.empty?
+      return '' if remote_name.empty?
 
-      @git_config[mirror_name]['url']
+      @git_config[remote_name]['url']
     end
 
     def name
-      return '' if mirror_name.empty?
+      return '' if remote_name.empty?
 
-      url = @git_config[mirror_name]['url']
+      url = @git_config[remote_name]['url']
       # can't use ruby's URI, it *won't* parse git ssh urls
       # case examples:
       #   git@github.com:LLNL/SSHSpawner.git
@@ -66,8 +66,8 @@ module SecureMirror
       @git_config = IniFile.load(git_config_file)
       return unless @git_config
 
-      @mirror_cfg = @git_config.select do |k, v|
-        k.include?('remote') && !k.include?('upstream') && v.include?('mirror')
+      @remote_cfg = @git_config.select do |k, v|
+        k.include?('remote') && v.include?('url')
       end
     end
   end

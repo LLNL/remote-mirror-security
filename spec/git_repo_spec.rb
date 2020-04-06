@@ -29,16 +29,10 @@ RSpec.describe SecureMirror::GitRepo, '#init' do
       expect(repo.new_repo?).to be true
     end
 
-    it 'reports when a repo is not a mirror' do
-      repo = SecureMirror::GitRepo.new(@non_mirror_config_file)
-      expect(repo.new_repo?).to be false
-      expect(repo.mirror?).to be false
-    end
-
     it 'populates info about a repo on disk' do
       repo = SecureMirror::GitRepo.new(@git_config_file)
       expect(repo.name).to eq 'LLNL/Umpire'
-      expect(repo.mirror?).to be true
+      expect(repo.remote?).to be true
       expect(repo.new_repo?).to be false
       expect(repo.misconfigured?).to be false
     end
