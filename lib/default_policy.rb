@@ -25,7 +25,7 @@ module SecureMirror
       org_members
       collaborators
       if @logger.debug?
-        untrusted_collabs.each { |c| @logger.debug("#{c.name} is untrusted!") }
+        untrusted_collabs.each { |n, _| @logger.debug("#{n} is untrusted!") }
       end
       Codes::OK
     end
