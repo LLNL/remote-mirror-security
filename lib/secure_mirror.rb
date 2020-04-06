@@ -137,11 +137,11 @@ module SecureMirror
 
   def self.evaluate_changes(phase, platform,
                             config_file: 'config.json',
-                            git_config_file: Dir.pwd + '/config',
-                            token: nil)
+                            git_config_file: Dir.pwd + '/config')
     config = JSON.parse(File.read(config_file), symbolize_names: true)
     logger = SecureMirror.init_logger(config)
-    return SecureMirror::Codes::OK unless evaluate?(phase, platform, token)
+    return SecureMirror::Codes::OK unless evaluate?(phase, platform,
+                                                    config[:mirror_check_token])
 
     repo = GitRepo.new(git_config_file)
     setup = Setup.new(config, repo, logger)
