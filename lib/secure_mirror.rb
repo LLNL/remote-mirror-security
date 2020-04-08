@@ -45,13 +45,12 @@ module SecureMirror
       when /github/
         client = github_client
       else
-        raise(StandardError, 'Unable to find client using git config')
+        msg = "unsupported mirror type: #{@repo.url}"
+        raise(StandardError, msg)
       end
       return client unless @config[:cache][:enable]
 
       caching_client(client)
-    rescue LoadError => e
-      @logger.error('Unable to load client: ' + e.to_s)
     end
 
     def policy_class
@@ -148,7 +147,8 @@ module SecureMirror
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
   rescue StandardError => e
     # if anything goes wrong, cancel the changes
-    logger.error("#{e}:\n#{e.backtrace.join("\n")}")
+    logger.error(e)
+    logger.debug(e.backtrace.join("\n"))
     SecureMirror::Codes::GENERAL_ERROR
   end
 end
