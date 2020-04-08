@@ -120,6 +120,7 @@ module SecureMirror
   end
 
   def self.cache_for_platform(platform, token)
+    remove_mirrored_status
     case platform
     when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?(token))
     else raise(StandardError, 'Unable to determine if repo is a mirror')
