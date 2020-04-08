@@ -5,8 +5,8 @@ remote mirrors.
 
 # Architecture
 
-This project relies on the `update.d` git hook to evaulate inbound repository
-changes.
+This project primarily relies on the `update.d` git hook to evaulate inbound
+repository changes.
 
 The `update.d` hook runs for every `ref` being mirrored (excluding refs
 pointing to forks). The hook receives 3 arguments:
@@ -18,19 +18,26 @@ pointing to forks). The hook receives 3 arguments:
 
 Using this data, the secure mirror incorporates a small set of abstractions:
 
-* A repository class that aggregates:
+* A generic remote client that aggregates:
   * Branch data
   * Commit data (specifically for the `sha`s in the `update.d` args)
   * Organization members
   * Repository collaborators
   * Pull Request (Merge Request) comments
-* A module mixin that uses the simplified repo data to evaluate trust
+* A generic policy class that uses the client data to evaluate a remote's
+posture
 
 In general, this information is used to say:
 
 * The collaborators (with write to protected branches) are trusted and
 therefore changes to protected branches are trusted.
 * Organization members who are are trusted can vouch for a set of changes.
+
+Since the `update.d` hook is run for *every* inbound change, this project now
+also enables caching to disk. Redundant calls can be made initially during the
+`pre-receive` hook phase and their responses re-read during `update`. Finally,
+`post-receive` can be used to clear out the cache (otherwise the data will
+expire after a configurable time limit).
 
 # Package as a gem
 
@@ -39,11 +46,22 @@ therefore changes to protected branches are trusted.
 ```
 
 # Basic use
+The `evaluate_changes` returns an integer error code that determines whether or
+not to allow the changes. Providing the current phase (`pre-receive`, `update`,
+or `post-receive`) will trigger the appropriate policy actions for that phase.
+
+Further, a custom policy subclass can redefine how each hook phase evaluates
+changes or caches data.
 
 ```ruby
+# in the update.d hook
 require 'secure_mirror'
 
-exit evaluate_changes(config_file: '/absolute/path/to/config.json')
+exit SecureMirror.evaluate_changes(
+  'update',
+  'gitlab',
+  config_file: '/path/to/config.json'
+)
 ```
 
 # Release
