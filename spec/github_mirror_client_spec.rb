@@ -74,7 +74,7 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
     it 'gathers commit data' do
       allow(@mirror_client.client).to receive(:commit) do
         OpenStruct.new(commit:
-          OpenStruct.new(author:
+          OpenStruct.new(committer:
             OpenStruct.new(date: Time.now)))
       end
       allow(@mirror_client.client).to receive(:commit_branches) do

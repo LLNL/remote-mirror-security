@@ -95,7 +95,7 @@ module SecureMirror
       client = @alt_clients[client_name.to_sym] || @client
       data = client.commit(repo, sha)
       branch_data = branches(repo, sha, client_name: client_name)
-      Commit.new(sha, data.commit.author.date, branches: branch_data)
+      Commit.new(sha, data.commit.committer.date, branches: branch_data)
     rescue *@@github_errors => e
       raise error_for_github_error(e), format(
         'Could not get GitHub commit for repo %<repo>s and sha %<sha>s: %<msg>s',
