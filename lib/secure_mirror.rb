@@ -138,10 +138,16 @@ module SecureMirror
     end
   end
 
+  def self.enabled?(config)
+    config[:enable]
+  end
+
   def self.evaluate_changes(phase, platform,
                             config_file: 'config.json',
                             git_config_file: Dir.pwd + '/config')
     config = JSON.parse(File.read(config_file), symbolize_names: true)
+    return SecureMirror::Codes::OK unless enabled?(config)
+
     logger = SecureMirror.init_logger(config)
     repo = GitRepo.new(git_config_file)
     return SecureMirror::Codes::OK unless evaluate?(repo, phase, platform,

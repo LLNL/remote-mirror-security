@@ -1,4 +1,5 @@
 {
+    "enable": true,
     "log_file": "/tmp/mirror.log",
     "log_level": "INFO",
     "cache": {
