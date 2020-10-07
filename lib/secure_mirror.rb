@@ -69,30 +69,13 @@ module SecureMirror
     end
   end
 
-  def self.gitlab_shell_path
-    omnibus_path = '/opt/gitlab/embedded/service/gitlab-shell'
-    source_path = '/home/git/gitlab-shell'
-    return omnibus_path if File.exist?(omnibus_path)
-
-    source_path
-  end
-
-  def self.gitlab_shell_config
-    YAML.load_file(File.join(gitlab_shell_path, 'config.yml'))
-  end
-
-  def self.gitlab_api_url
-    base = gitlab_shell_config['gitlab_url'] || 'http://localhost'
-    "#{base}/api/v4"
-  end
-
-  def self.mirrored_in_gitlab?(repo, token)
+  def self.mirrored_in_gitlab?(repo, config)
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
     project = gl_repository.tr('project-', '')
-    url = "#{gitlab_api_url}/projects/#{project}"
-    headers = { 'PRIVATE-TOKEN': token }
+    url = "#{config[:gitlab_url]}/api/v4/projects/#{project}"
+    headers = { 'PRIVATE-TOKEN': config[:mirror_check_token] }
     resp = SecureMirror.http_get(url, headers: headers)
 
     return false if !repo.remote? && resp.code != '200'
@@ -120,19 +103,19 @@ module SecureMirror
     mirrored
   end
 
-  def self.cache_for_platform(repo, platform, token)
+  def self.cache_for_platform(repo, platform, config)
     remove_mirrored_status
     case platform
-    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?(repo, token))
+    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?(repo, config))
     else raise(StandardError, 'Unable to determine if repo is a mirror')
     end
   end
 
-  def self.evaluate?(repo, phase, platform, token)
+  def self.evaluate?(repo, phase, platform, config)
     case phase
     when 'pre-receive'
       remove_mirrored_status
-      cache_for_platform(repo, platform, token)
+      cache_for_platform(repo, platform, config)
     when 'update' then mirrored?
     when 'post-receive' then remove_mirrored_status
     end
@@ -145,7 +128,7 @@ module SecureMirror
     logger = SecureMirror.init_logger(config)
     repo = GitRepo.new(git_config_file)
     return SecureMirror::Codes::OK unless evaluate?(repo, phase, platform,
-                                                    config[:mirror_check_token])
+                                                    config)
 
     setup = Setup.new(config, repo, logger)
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
