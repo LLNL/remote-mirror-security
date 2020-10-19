@@ -16,27 +16,23 @@
 module SecureMirror
   # defines a collaborator on a repository
   class Collaborator
-    @name = ''
-    @trusted = false
-
-    attr_reader :name
-    attr_reader :trusted
-
-    def as_json(*)
-      { klass: self.class.name, name: @name, trusted: @trusted }
-    end
-
-    def to_json(*options)
-      as_json(*options).to_json(*options)
-    end
-
     def self.from_json(json_obj)
       new(json_obj[:name], json_obj[:trusted])
     end
 
-    def initialize(name, trusted)
+    attr_reader :name, :trusted
+
+    def initialize(name = '', trusted = false)
       @name = name
       @trusted = trusted
+    end
+
+    def as_json
+      { klass: self.class.name, name: @name, trusted: @trusted }
+    end
+
+    def to_json(*options)
+      as_json.to_json(*options)
     end
   end
 end

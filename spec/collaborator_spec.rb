@@ -17,9 +17,24 @@ require 'collaborator'
 
 RSpec.describe SecureMirror::Collaborator, '#init' do
   context 'creates a basic collaborator object' do
+    let(:collab) { SecureMirror::Collaborator.new('foo', true) }
+
     it 'initializes with a name and whether or not theyre trusted' do
-      collab = SecureMirror::Collaborator.new('foo', true)
       expect(collab.name).to be_truthy
+      expect(collab.trusted)
+    end
+
+    it 'can be represented as a hash' do
+      expect(collab.as_json). to eq({:klass=>"SecureMirror::Collaborator", :name=>"foo", :trusted=>true})
+    end
+
+    it 'can be represented as JSON' do
+      expect(JSON.parse(collab.to_json, symbolize_names: true)).to eq collab.as_json
+    end
+
+    it 'can be loaded from a JSON object' do
+      collaborator = SecureMirror::Collaborator.from_json(collab.as_json)
+      expect(collaborator.name).to be_truthy
       expect(collab.trusted)
     end
   end
