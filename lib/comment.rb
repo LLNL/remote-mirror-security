@@ -15,40 +15,27 @@
 
 require 'date'
 require 'time'
-
 module SecureMirror
   # defines a comment
   class Comment
-    @commenter = ''
-    @body = ''
-    @date = nil
+    attr_reader :commenter, :body, :date
 
-    attr_reader :commenter
-    attr_reader :body
-    attr_reader :date
+    def initialize(commenter = '', body = '', date = nil)
+      @commenter = commenter
+      @body = body
+      @date = date.is_a?(String) ? Time.parse(date) : date&.to_time
+    end
 
-    def as_json(*)
+    def as_json
       { klass: self.class.name, commenter: @commenter, body: @body, date: @date }
     end
 
     def to_json(*options)
-      as_json(*options).to_json(*options)
+      as_json.to_json(*options)
     end
 
     def self.from_json(json_obj)
       new(json_obj[:commenter], json_obj[:body], json_obj[:date])
-    end
-
-    def initialize(commenter, body, date)
-      @commenter = commenter
-      @body = body
-      if date.is_a?(Time)
-        @date = date
-      elsif date.is_a?(Date)
-        @date = date.to_time
-      elsif date.is_a?(String)
-        @date = Time.parse(date)
-      end
     end
   end
 end
