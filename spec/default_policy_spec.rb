@@ -55,8 +55,7 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
   end
 
   def commit
-    SecureMirror::Commit.new(ARGV[2], '2011-04-14T16:00:49Z',
-                             branches: branches)
+    SecureMirror::Commit.new(ARGV[2], '2011-04-14T16:00:49Z', branches)
   end
 
   def untrusted_branch
@@ -64,8 +63,7 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
   end
 
   def untrusted_commit
-    SecureMirror::Commit.new(ARGV[2], '2011-04-14T16:00:49Z',
-                             branches: untrusted_branch)
+    SecureMirror::Commit.new(ARGV[2], '2011-04-14T16:00:49Z', untrusted_branch)
   end
 
   def comment_before_commit
