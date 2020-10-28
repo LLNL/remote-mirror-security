@@ -25,7 +25,7 @@ RSpec.describe SecureMirror::Collaborator, '#init' do
     end
 
     it 'can be represented as a hash' do
-      expect(collab.as_json). to eq({:klass=>"SecureMirror::Collaborator", :name=>"foo", :trusted=>true})
+      expect(collab.as_json).to eq({:klass=>"SecureMirror::Collaborator", :name=>"foo", :trusted=>true})
     end
 
     it 'can be represented as JSON' do
