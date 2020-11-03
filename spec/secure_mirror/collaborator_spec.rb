@@ -13,7 +13,7 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'collaborator'
+require 'spec_helper'
 
 RSpec.describe SecureMirror::Collaborator, '#init' do
   context 'creates a basic collaborator object' do
@@ -25,11 +25,15 @@ RSpec.describe SecureMirror::Collaborator, '#init' do
     end
 
     it 'can be represented as a hash' do
-      expect(collab.as_json).to eq({:klass=>"SecureMirror::Collaborator", :name=>"foo", :trusted=>true})
+      expected = { klass: 'SecureMirror::Collaborator',
+                   name: 'foo',
+                   trusted: true }
+      expect(collab.as_json). to eq(expected)
     end
 
     it 'can be represented as JSON' do
-      expect(JSON.parse(collab.to_json, symbolize_names: true)).to eq collab.as_json
+      result = JSON.parse(collab.to_json, symbolize_names: true)
+      expect(result).to eq collab.as_json
     end
 
     it 'can be loaded from a JSON object' do

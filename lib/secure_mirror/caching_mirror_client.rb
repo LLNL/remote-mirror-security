@@ -13,33 +13,9 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'json'
-require 'digest/sha2'
-
-require 'helpers'
-require 'collaborator'
-
 module SecureMirror
-  class ClientGenericError < StandardError; end
-  class ClientUnauthorized < ClientGenericError; end
-  class ClientForbidden < ClientGenericError; end
-  class ClientServerError < ClientGenericError; end
-  class ClientNotFound < ClientGenericError; end
-
-  CLIENT_ERRORS = [
-    ClientUnauthorized,
-    ClientForbidden,
-    ClientServerError,
-    ClientNotFound,
-    ClientGenericError
-  ].freeze
-
-  # wraps MirrorClient and caches results in memory or to a file
   class CachingMirrorClient
-    attr_accessor :cache
-    attr_accessor :client
-    attr_accessor :config
-    attr_accessor :default_expiration
+    attr_accessor :cache, :client, :config, :default_expiration
 
     def initialize(client, cache_dir: '.sm', default_expiration: 30)
       @cache = {}
@@ -98,27 +74,34 @@ module SecureMirror
     end
 
     def restore_objects(data)
-      if data.is_a?(Array)
+      case data
+      when Array
         return data unless restorable_array_data?(data)
 
         restore_array(data)
-      elsif data.is_a?(Hash)
+      when Hash
         return data unless restorable_hash_data?(data)
 
         restore_hash(data)
       end
     end
 
-    def read_cache(key)
-      cached = @cache[key]
-      return cached if cached
+    def read_from_memory(key)
+      @cache[key]
+    end
 
+    def read_from_file(key)
       return unless File.exist?(cache_file(key))
 
       cached = JSON.parse(File.read(cache_file(key)), symbolize_names: true)
       cached[:data] = restore_objects(cached[:data])
       cached[:expires] = Time.parse(cached[:expires])
       @cache[key] = cached
+      cached
+    end
+
+    def read_cache(key)
+      read_from_memory(key) || read_from_file(key)
     end
 
     def write_cache(key, obj)
@@ -126,14 +109,11 @@ module SecureMirror
       @cache[key] = obj
     end
 
-    def respond_to_missing?(method, *)
-      @client.respond_to? method
-    end
-
     def cache_call(method, *args)
       expires = strip_expires(args)
       key = cache_key(method, args.to_s)
       cached = read_cache(key)
+
       return cached[:data] if cached && cached[:expires] > Time.now
 
       write_cache(key,
@@ -141,35 +121,16 @@ module SecureMirror
                   data: @client.public_send(method, *args))[:data]
     end
 
+    private
+
+    def respond_to_missing?(method, *)
+      @client.respond_to? method
+    end
+
     def method_missing(method, *args, &_block)
       return super unless respond_to_missing? method
 
       cache_call(method, *args)
-    end
-  end
-
-  # provides a generic REST API client interface for querying remote mirror data
-  class MirrorClient
-    @client = nil
-    @alt_clients = nil
-
-    attr_accessor :client
-    attr_accessor :alt_clients
-
-    def org_members(org: '', client_name: '', expires: nil)
-      raise NotImplementedError
-    end
-
-    def collaborators(repo, client_name: '', expires: nil)
-      raise NotImplementedError
-    end
-
-    def commit(repo, sha, client_name: '', expires: nil)
-      raise NotImplementedError
-    end
-
-    def review_comments(repo, sha, client_name: '', expires: nil)
-      raise NotImplementedError
     end
   end
 end

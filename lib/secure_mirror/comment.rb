@@ -13,22 +13,19 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'date'
-require 'time'
-
 module SecureMirror
-  # defines a git commit
-  class Commit
-    attr_reader :sha, :date, :branches
+  # defines a comment
+  class Comment
+    attr_reader :commenter, :body, :date
 
-    def initialize(sha = '', date = nil, branches = [])
-      @sha = sha
+    def initialize(commenter = '', body = '', date = nil)
+      @commenter = commenter
+      @body = body
       @date = date.is_a?(String) ? Time.parse(date) : date&.to_time
-      @branches = branches
     end
 
     def as_json
-      { klass: self.class.name, sha: @sha, date: @date, branches: branches }
+      { klass: self.class.name, commenter: @commenter, body: @body, date: @date }
     end
 
     def to_json(*options)
@@ -36,13 +33,7 @@ module SecureMirror
     end
 
     def self.from_json(json_obj)
-      new(json_obj[:sha], json_obj[:date], json_obj[:branches])
-    end
-
-    def protected_branch?(branch_name)
-      @branches.any? do |branch|
-        branch[:name] == branch_name && branch[:protection]
-      end
+      new(json_obj[:commenter], json_obj[:body], json_obj[:date])
     end
   end
 end

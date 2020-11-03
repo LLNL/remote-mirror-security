@@ -13,10 +13,6 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'helpers'
-require 'policy'
-require 'mirror_client'
-
 module SecureMirror
   # defines a policy for mirror security to enforce
   class DefaultPolicy < Policy
@@ -93,10 +89,15 @@ module SecureMirror
     def vetted_by
       return nil unless commit
 
-      comments
-        .select { |c| org_members[c.commenter]&.trusted }
-        .select { |c| signoff?(c.body) && c.date > commit.date }
-        .first
+      comments.detect { |comment| valid_approval?(comment) }
+    end
+
+    private
+
+    def valid_approval?(comment)
+      org_members[comment.commenter]&.trusted &&
+        signoff?(comment.body) &&
+        comment.date > commit.date
     end
   end
 end

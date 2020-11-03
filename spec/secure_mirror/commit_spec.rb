@@ -13,8 +13,7 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'time'
-require 'commit'
+require 'spec_helper'
 
 RSpec.describe SecureMirror::Commit, '#init' do
   context 'creates a basic commit object' do

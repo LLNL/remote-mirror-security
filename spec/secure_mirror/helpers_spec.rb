@@ -13,12 +13,9 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'helpers'
+require 'spec_helper'
 
 RSpec.describe SecureMirror, '#unit' do
-  before(:each) do
-  end
-
   context 'http methods' do
     it 'performs a basic get request' do
       VCR.use_cassette('lc_get') do

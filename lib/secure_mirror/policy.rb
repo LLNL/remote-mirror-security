@@ -13,13 +13,17 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'helpers'
-require 'fileutils'
-require 'mirror_client'
-
 module SecureMirror
   # defines a policy for mirror security to enforce
   class Policy
+    def initialize(config, phase, client, repo, logger)
+      @config = config
+      @phase = phase
+      @client = client
+      @repo = repo
+      @logger = logger
+    end
+
     def pre_receive
       @logger.debug(format('evaluating %<phase>s', phase: @phase))
       Codes::OK
@@ -43,21 +47,20 @@ module SecureMirror
 
     def hook_args
       # variables provided by the git hook depend on stage
-      case @phase
-      when 'pre-receive', 'post-receive'
-        @hook_args ||=
-          ARGV.each_slice(3).map do |current_sha, future_sha, ref_name|
-            {
-              current_sha: current_sha,
-              future_sha: future_sha,
-              ref_name: ref_name
-            }
-          end
-      when 'update'
-        @hook_args ||= {
-          ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2]
-        }
-      end
+      @hook_args ||= case @phase
+                     when 'pre-receive', 'post-receive'
+                       ARGV.each_slice(3).map do |current_sha, future_sha, ref_name|
+                         {
+                           current_sha: current_sha,
+                           future_sha: future_sha,
+                           ref_name: ref_name
+                         }
+                       end
+                     when 'update'
+                       {
+                         ref_name: ARGV[0], current_sha: ARGV[1], future_sha: ARGV[2]
+                       }
+                     end
     end
 
     def log_format_for_pre_receive
@@ -103,14 +106,6 @@ module SecureMirror
     rescue StandardError => e
       @logger.error("Uncaught error: #{e}\n#{e.backtrace.join("\n")}")
       Codes::GENERAL_ERROR
-    end
-
-    def initialize(config, phase, client, repo, logger)
-      @config = config
-      @phase = phase
-      @client = client
-      @repo = repo
-      @logger = logger
     end
   end
 end

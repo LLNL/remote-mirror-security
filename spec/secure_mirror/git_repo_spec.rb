@@ -13,24 +13,22 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'git_repo'
+require 'spec_helper'
 
 RSpec.describe SecureMirror::GitRepo, '#init' do
-  before(:each) do
-    @empty_config = ''
-    @git_config_file = __dir__ + '/fixtures/github-config'
-    @non_mirror_config_file = __dir__ + '/fixtures/non-mirror-config'
-    @unsupported_git_config_file = __dir__ + '/fixtures/unsupported-config'
-  end
+  let(:empty_config) { '' }
+  let(:git_config_file) { __dir__ + '/fixtures/github-config' }
+  let(:non_mirror_config_file) { __dir__ + '/fixtures/non-mirror-config' }
+  let(:unsupported_git_config_file) { __dir__ + '/fixtures/unsupported-config' }
 
   context 'creates a git repo object' do
     it 'says it is a new repo if no config exists' do
-      repo = SecureMirror::GitRepo.new(@empty_config)
+      repo = SecureMirror::GitRepo.new(empty_config)
       expect(repo.new_repo?).to be true
     end
 
     it 'populates info about a repo on disk' do
-      repo = SecureMirror::GitRepo.new(@git_config_file)
+      repo = SecureMirror::GitRepo.new(git_config_file)
       expect(repo.name).to eq 'LLNL/Umpire'
       expect(repo.remote?).to be true
       expect(repo.new_repo?).to be false

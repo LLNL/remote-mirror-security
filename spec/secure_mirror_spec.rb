@@ -13,15 +13,9 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'logger'
-require 'ostruct'
-require 'secure_mirror'
-require 'default_policy'
+require 'spec_helper'
 
 RSpec.describe SecureMirror, '#unit' do
-  before(:each) do
-  end
-
   after(:each) do
     f = SecureMirror.mirrored_status_file
     File.unlink f if File.exist? f
@@ -42,34 +36,6 @@ RSpec.describe SecureMirror, '#unit' do
       SecureMirror.cache_mirrored_status(true)
       expect(SecureMirror.remove_mirrored_status).to be true
       expect(File.file?(SecureMirror.mirrored_status_file)).to be false
-    end
-  end
-end
-
-RSpec.describe SecureMirror::Setup, '#unit' do
-  before(:each) do
-    @config = JSON.parse(File.read(__dir__ + '/fixtures/config.json'),
-                         symbolize_names: true)
-    @repo = SecureMirror::GitRepo.new(__dir__ + '/fixtures/config')
-    @logger = Logger.new(STDOUT)
-    @setup = SecureMirror::Setup.new(@config, @repo, @logger)
-  end
-
-  after(:each) do
-  end
-
-  context 'policy setup' do
-    it 'gets a default policy class when none is defined in config' do
-      @config[:policy_definition] = nil
-      @config[:policy_class] = nil
-      @setup = SecureMirror::Setup.new(@config, @repo, @logger)
-      expect(@setup.policy_class).to be SecureMirror::DefaultPolicy
-    end
-  end
-
-  context 'client setup' do
-    it 'sets up and returns a client based on config (github)' do
-      expect(@setup.client).not_to be nil
     end
   end
 end
