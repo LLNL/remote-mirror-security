@@ -43,7 +43,6 @@ GEM
       docile (~> 1.1)
       simplecov-html (~> 0.11)
     simplecov-html (0.12.2)
-    vcr (6.0.0)
     webmock (3.9.3)
       addressable (>= 2.3.6)
       crack (>= 0.3.2)
@@ -59,7 +58,6 @@ DEPENDENCIES
   pry
   rspec
   simplecov
-  vcr
   webmock
 
 BUNDLED WITH

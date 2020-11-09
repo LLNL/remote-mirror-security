@@ -83,6 +83,11 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
       end
     end
 
+    it 'gathers review comments' do
+      # comments = mirror_client.review_comments(repo, sha)
+      # expect(comments).to eq []
+    end
+
     it 'gathers commit data' do
       allow(mirror_client.client).to receive(:commit) do
         OpenStruct.new(commit:

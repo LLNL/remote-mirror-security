@@ -15,11 +15,12 @@
 
 module SecureMirror
   class MirrorClient
-    @client = nil
-    @alt_clients = nil
+    attr_accessor :client, :alt_clients
 
-    attr_accessor :client
-    attr_accessor :alt_clients
+    def initialize
+      @client = nil
+      @alt_clients = nil
+    end
 
     def org_members(org: '', client_name: '', expires: nil)
       raise NotImplementedError
@@ -30,6 +31,10 @@ module SecureMirror
     end
 
     def commit(repo, sha, client_name: '', expires: nil)
+      raise NotImplementedError
+    end
+
+    def branches(repo, sha, client_name: '')
       raise NotImplementedError
     end
 

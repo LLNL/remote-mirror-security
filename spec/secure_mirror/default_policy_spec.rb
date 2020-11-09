@@ -15,12 +15,6 @@
 
 require 'spec_helper'
 
-ARGV = %w[
-  refs/dev
-  0000000000000000000000000000000000000000
-  1212121212121212121212121212121212121212
-].freeze
-
 RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
   let(:trusted_member) { 'foo' }
   let(:untrusted_member) { 'bar' }

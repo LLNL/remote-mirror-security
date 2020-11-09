@@ -17,12 +17,23 @@ require 'spec_helper'
 
 RSpec.describe SecureMirror, '#unit' do
   context 'http methods' do
+    before do
+      stub_request(:get, /lc.llnl.gov/).
+        with(headers: {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+        to_return(status: 302, body: nil, headers: {})
+    end
+
     it 'performs a basic get request' do
-      VCR.use_cassette('lc_get') do
-        resp = SecureMirror.http_get('https://lc.llnl.gov')
-        expect(resp.code).to eq '302'
-        expect(resp.body).not_to be nil
-      end
+      resp = SecureMirror.http_get('https://lc.llnl.gov')
+      expect(resp.code).to eq '302'
+      expect(resp.body).not_to be nil
+    end
+  end
+
+  describe '.class_from_string' do
+    it 'returns a constant from a klass string' do
+      github_client = SecureMirror::GitHubMirrorClient
+      expect(SecureMirror.class_from_string(github_client.to_s)).to be(github_client)
     end
   end
 end

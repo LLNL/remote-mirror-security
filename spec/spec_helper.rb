@@ -38,8 +38,16 @@ require 'date'
 require 'ostruct'
 require 'logger'
 require 'fileutils'
-require 'vcr'
+require 'webmock/rspec'
 require 'fakefs/spec_helpers'
+
+ARGV = %w[
+  refs/dev
+  0000000000000000000000000000000000000000
+  1212121212121212121212121212121212121212
+].freeze
+
+WebMock.disable_net_connect!(allow_localhost: true)
 
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate
@@ -123,16 +131,4 @@ RSpec.configure do |config|
   # test failures related to randomization by passing the same `--seed` value
   # as the one that triggered the failure.
   # Kernel.srand config.seed
-end
-
-VCR.configure do |c|
-  c.default_cassette_options = {
-    serialize_with: :json,
-    # TODO: Track down UTF-8 issue and remove
-    preserve_exact_body_bytes: true,
-    decode_compressed_response: true,
-    record: :once
-  }
-  c.cassette_library_dir = 'spec/secure_mirror/cassettes'
-  c.hook_into :webmock
 end

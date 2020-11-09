@@ -11,7 +11,6 @@ Gem::Specification.new do |spec|
   spec.homepage = 'https://github.com/LLNL/remote-mirror-security'
   spec.add_development_dependency 'bundler', '>= 1', '< 3'
   spec.add_development_dependency 'rspec', '~> 3.7', '>= 3.7.1'
-  spec.add_development_dependency 'vcr', '~> 5.0', '>= 5.0.0'
   spec.add_dependency 'inifile', '~> 3.0', '>= 3.0.0'
   spec.add_dependency 'octokit', '~> 4.18', '>= 4.18.0'
   spec.files = %w[README.md secure-mirror.gemspec]

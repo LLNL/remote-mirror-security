@@ -27,11 +27,25 @@ RSpec.describe SecureMirror::Policy, '#unit' do
   end
 
   context 'interface' do
+    let(:expected_hook_args) do
+      [
+        {
+          :current_sha=>"refs/dev",
+          :future_sha=>"0000000000000000000000000000000000000000",
+          :ref_name=>"1212121212121212121212121212121212121212"
+        }
+      ]
+    end
+
     context 'phase is pre-receive' do
       let(:phase) { 'pre-receive' }
 
       it '#evaluate returns a success code' do
         expect(policy.evaluate).to eq SecureMirror::Codes::OK
+      end
+
+      it 'can access the hook_args' do
+        expect(policy.hook_args).to eq expected_hook_args
       end
     end
 
@@ -48,6 +62,10 @@ RSpec.describe SecureMirror::Policy, '#unit' do
 
       it '#evaluate returns a success code' do
         expect(policy.evaluate).to eq SecureMirror::Codes::OK
+      end
+
+      it 'can access the hook_args' do
+        expect(policy.hook_args).to eq expected_hook_args
       end
     end
   end
