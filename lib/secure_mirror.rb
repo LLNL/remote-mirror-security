@@ -57,6 +57,8 @@ module SecureMirror
   end
 
   def self.mirrored_in_gitlab?(repo, token)
+    return false unless repo.remote?
+
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
@@ -65,7 +67,6 @@ module SecureMirror
     headers = { 'PRIVATE-TOKEN': token }
     resp = SecureMirror.http_get(url, headers: headers)
 
-    return false unless repo.remote? || resp.code == '200'
     raise(StandardError, 'mirror info unavailable') unless resp.code == '200'
 
     JSON.parse(resp.body)['mirror']
