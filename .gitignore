@@ -3,3 +3,5 @@
 
 # cached gems
 vendor/*
+tmp/
+coverage

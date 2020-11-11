@@ -13,18 +13,8 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'logger'
-require 'net/http'
-
 # shared helper/utility methods
 module SecureMirror
-  module Codes
-    OK = 0
-    DENIED = 100
-    CLIENT_ERROR = 200
-    GENERAL_ERROR = 300
-  end
-
   def self.class_from_string(klass)
     return Object.const_get(klass) unless klass.include?(':')
 
@@ -37,8 +27,9 @@ module SecureMirror
   end
 
   def self.init_logger(config)
-    log_file = config[:log_file]
-    setup_log_dir(log_file)
+    log_filename = config[:log_file]
+    setup_log_dir(log_filename)
+    log_file = File.open(log_filename, 'w')
     level = ENV['SM_LOG_LEVEL'] || config[:log_level] || Logger::INFO
     Logger.new(log_file, level: level)
   end

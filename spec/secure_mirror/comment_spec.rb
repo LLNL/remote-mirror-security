@@ -13,9 +13,7 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'time'
-require 'date'
-require 'comment'
+require 'spec_helper'
 
 RSpec.describe SecureMirror::Comment, '#init' do
   context 'creates a basic comment object' do

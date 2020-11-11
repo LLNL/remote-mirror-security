@@ -13,62 +13,32 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
+require 'inifile'
 require 'yaml'
+require 'date'
+require 'time'
 require 'json'
 require 'fileutils'
-require 'helpers'
-require 'git_repo'
-require 'mirror_client'
-require 'default_policy'
+require 'pry'
+require 'logger'
+require 'net/http'
+require 'digest/sha2'
+require 'octokit'
+require 'secure_mirror/policy'
+
+Dir[File.join(__dir__, 'secure_mirror', '*.rb')].each { |f| require(f) }
 
 # secure mirror
 module SecureMirror
-  # client and policy setup
-  class Setup
-    def github_client
-      require 'github_mirror_client'
-      access_tokens = @config[:repo_types][:github][:access_tokens]
-      GitHubMirrorClient.new(access_tokens[:main],
-                             alt_tokens: access_tokens[:external],
-                             config: @config[:repo_types][:github])
-    end
-
-    def caching_client(client)
-      conf = @config[:cache]
-      CachingMirrorClient.new(client,
-                              cache_dir: conf[:dir],
-                              default_expiration: conf[:default_expiration])
-    end
-
-    def client
-      case @repo.url.downcase
-      when /github/
-        client = github_client
-      else
-        msg = "unsupported mirror type: #{@repo.url}"
-        raise(StandardError, msg)
-      end
-      return client unless @config[:cache][:enable]
-
-      caching_client(client)
-    end
-
-    def policy_class
-      definition = @config[:policy_definition]
-      klass = @config[:policy_class]
-      return DefaultPolicy unless definition && klass
-
-      require definition
-      SecureMirror.class_from_string(klass)
-    end
-
-    def initialize(config, repo, logger)
-      @config = config
-      @repo = repo
-      @logger = logger
-    end
-  end
-
+  NIL_SHA = '0000000000000000000000000000000000000000'
+  CLIENT_ERRORS = [
+    ClientUnauthorized,
+    ClientForbidden,
+    ClientServerError,
+    ClientNotFound,
+    ClientGenericError
+  ].freeze
+  
   def self.gitlab_shell_path
     omnibus_path = '/opt/gitlab/embedded/service/gitlab-shell'
     source_path = '/home/git/gitlab-shell'
@@ -87,15 +57,16 @@ module SecureMirror
   end
 
   def self.mirrored_in_gitlab?(repo, token)
+    return false unless repo.remote?
+
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
-    project = gl_repository.tr('project-', '')
+    project = gl_repository.sub('project-', '')
     url = "#{gitlab_api_url}/projects/#{project}"
     headers = { 'PRIVATE-TOKEN': token }
     resp = SecureMirror.http_get(url, headers: headers)
 
-    return false if !repo.remote? && resp.code != '200'
     raise(StandardError, 'mirror info unavailable') unless resp.code == '200'
 
     JSON.parse(resp.body)['mirror']
@@ -122,23 +93,21 @@ module SecureMirror
 
   def self.cache_for_platform(repo, platform, token)
     remove_mirrored_status
-    case platform
-    when 'gitlab' then cache_mirrored_status(mirrored_in_gitlab?(repo, token))
-    else raise(StandardError, 'Unable to determine if repo is a mirror')
-    end
+    mirrored_status = mirrored_in_gitlab?(repo, token)
+    return cache_mirrored_status(mirrored_status) if platform == 'gitlab'
+    raise(StandardError, 'Unable to determine if repo is a mirror')
   end
 
   def self.evaluate?(repo, phase, platform, token)
     case phase
-    when 'pre-receive'
-      remove_mirrored_status
-      cache_for_platform(repo, platform, token)
+    when 'pre-receive' then cache_for_platform(repo, platform, token)
     when 'update' then mirrored?
     when 'post-receive' then remove_mirrored_status
     end
   end
 
-  def self.evaluate_changes(phase, platform,
+  def self.evaluate_changes(phase,
+                            platform,
                             config_file: 'config.json',
                             git_config_file: Dir.pwd + '/config')
     config = JSON.parse(File.read(config_file), symbolize_names: true)

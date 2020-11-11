@@ -13,15 +13,22 @@
 # SPDX-License-Identifier: MIT
 ###############################################################################
 
-require 'inifile'
-
 module SecureMirror
   # Inspects a git repo on disk and gathers info about it
   class GitRepo
-    @repo_name = ''
-    @git_config = nil
-
     attr_reader :git_config
+
+    def initialize(git_config_file)
+      @repo_name = ''
+      @git_config = nil
+      # `pwd` for the hook will be the git directory itself
+      @git_config = IniFile.load(git_config_file)
+      return unless @git_config
+
+      @remote_cfg = @git_config.select do |k, v|
+        k.include?('remote') && v.include?('url')
+      end
+    end
 
     def new_repo?
       @git_config.nil?
@@ -59,16 +66,6 @@ module SecureMirror
                    .gsub('.git', '')
                    .split('/')[-2..-1]
                    .join('/')
-    end
-
-    def initialize(git_config_file)
-      # `pwd` for the hook will be the git directory itself
-      @git_config = IniFile.load(git_config_file)
-      return unless @git_config
-
-      @remote_cfg = @git_config.select do |k, v|
-        k.include?('remote') && v.include?('url')
-      end
     end
   end
 end
