@@ -117,7 +117,7 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
         to eq(policy.signoff?(capitalized_signoff_message))
     end
 
-    it 'returns false when the message is a signoff' do
+    it 'returns true when the message is a signoff' do
       signoff_message = config_signoff_bodies[0]
       expect(policy.signoff?(signoff_message)).to be true
     end
