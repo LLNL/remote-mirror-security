@@ -27,8 +27,8 @@ module SecureMirror
     end
 
     def update
-      if commit.protected_branch?(branch_name) && collabs_trusted?
-        @logger.info('automatically syncing protected branch')
+      if collabs_trusted?
+        @logger.info('automatically trusted repository')
         return Codes::OK
       elsif vetted_by
         @logger.info(format('changes vetted by %<user>s',

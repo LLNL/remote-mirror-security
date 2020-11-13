@@ -170,7 +170,7 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
     end
 
     context 'phase is update' do
-      context 'all collabs trusted and branches protected' do
+      context 'all collabs trusted' do
         let(:review_comments) { [] }
 
         it 'responds with success code' do
@@ -184,15 +184,6 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
 
         it 'responds with success code' do
           expect(policy.evaluate).to eq SecureMirror::Codes::OK
-        end
-      end
-
-      context 'all collabs trusted but branches unprotected' do
-        let(:review_comments) { [] }
-        let(:commit) { untrusted_commit }
-
-        it 'responds with denial code' do
-          expect(policy.evaluate).to eq SecureMirror::Codes::DENIED
         end
       end
 
