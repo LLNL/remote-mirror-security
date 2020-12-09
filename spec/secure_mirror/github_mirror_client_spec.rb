@@ -15,16 +15,28 @@
 
 require 'spec_helper'
 
+def read_perms
+  { admin: false, push: false, pull: true }
+end
+
+def write_perms
+  { admin: true, push: true, pull: true }
+end
+
+def member_with_read
+  { login: 'thomas', permissions: read_perms }
+end
+
 def members
   [
-    { login: 'thomas' },
-    { login: 'mcfadden8' },
-    { login: 'davidbeckingsale' }
+    member_with_read,
+    { login: 'mcfadden8', permissions: write_perms },
+    { login: 'davidbeckingsale', permissions: write_perms }
   ]
 end
 
 def thomas
-  [{ login: 'thomas' }]
+  [{ login: 'thomas', permissions: write_perms }]
 end
 
 def verify_members(members)
@@ -81,6 +93,12 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
         expect(collab.name).to eq name
         expect(collab.trusted).to eq false
       end
+    end
+
+    it 'only considers collaborators with repo write access' do
+      allow(mirror_client.client).to receive(:collabs) { members }
+      collabs = mirror_client.collaborators(repo)
+      expect(collabs.any? { |k, _| member_with_read[:login] == k }).to be false
     end
 
     it 'gathers review comments' do

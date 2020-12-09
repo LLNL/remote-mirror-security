@@ -56,10 +56,14 @@ module SecureMirror
       end
     end
 
+    def write_perms?(collab)
+      collab[:permissions][:admin] || collab[:permissions][:push]
+    end
+
     def collaborators(repo, client_name: '')
       wrap_with_github_error_handler(template: COLLABORATOR_ERROR, repo: repo) do
         client = client_from_name(client_name.to_sym)
-        client.collabs(repo).map do |collab|
+        client.collabs(repo).select { |c| write_perms?(c) }.map do |collab|
           [collab[:login], Collaborator.new(collab[:login], false)]
         end.to_h
       end
