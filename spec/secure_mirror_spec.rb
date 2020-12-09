@@ -43,11 +43,15 @@ RSpec.describe SecureMirror, '#unit' do
     context 'pre-receive phase' do
       let(:member_names) { ['apple', 'orange', 'banana'] }
       let(:two_factor_member_names) { ['orange', 'banana'] }
+      let(:read_permissions) { { admin: false, push: false, pull: true } }
+      let(:write_permissions) { { admin: true, push: true, pull: true } }
       let(:two_factor_members) do
-        two_factor_member_names.map { |name| { login: name } }
+        two_factor_member_names.map do |name|
+          { login: name, permissions: write_permissions }
+        end
       end
       let(:members) do
-        member_names.map { |name| { login: name } }
+        member_names.map { |name| { login: name, permissions: read_permissions } }
       end
       let(:github_headers) do
         {
