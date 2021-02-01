@@ -1,0 +1,21 @@
+name: LLNL Remote Secuirty Testing
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        ruby: [ '2.5', '2.6', '2.7']
+    name: Ruby ${{ matrix.ruby }} tests
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+      - run: |
+          gem install bundler -v 2.0.1
+          bundle install
+          COVERAGE=true bundle exec rspec
+          ./script/package

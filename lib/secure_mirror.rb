@@ -25,8 +25,11 @@ require 'net/http'
 require 'digest/sha2'
 require 'octokit'
 require 'secure_mirror/policy'
+require 'secure_mirror/mirror_client'
 
-Dir[File.join(__dir__, 'secure_mirror', '*.rb')].each { |f| require(f) }
+Dir[File.join(__dir__, 'secure_mirror', '*.rb')].sort
+  .entries.reject{ |f|  f.end_with?('/secure_mirror/mirror_client.rb', '/secure_mirror/policy.rb') }
+  .each { |f| require(f) }
 
 # secure mirror
 module SecureMirror
