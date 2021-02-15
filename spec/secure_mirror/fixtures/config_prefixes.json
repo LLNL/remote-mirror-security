@@ -8,7 +8,6 @@
     },
     "policy_definition": "default_policy.rb",
     "policy_class_name": "DefaultPolicy",
-    "mirror_check_token": "token",
     "repo_types": {
         "github": {
             "trusted_org": "Foo",

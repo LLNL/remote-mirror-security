@@ -25,11 +25,21 @@ RSpec.describe SecureMirror, '#unit' do
 
   describe '.evaluate_changes' do
     let(:config_filename) { __dir__ + '/secure_mirror/fixtures/config.json' }
+    let(:config_prefixes_filename) { __dir__ + '/secure_mirror/fixtures/config_prefixes.json' }
     let(:git_config_file) { __dir__ + '/secure_mirror/fixtures/github-config' }
+    let(:unsupported_config) { __dir__ + '/secure_mirror/fixtures/unsupported-config'}
 
     before do
       FakeFS::FileSystem.clone(config_filename)
       FakeFS::FileSystem.clone(git_config_file)
+      FakeFS::FileSystem.clone(config_prefixes_filename)
+
+      # Establish standard environment potentially expected across tests.
+      allow(ENV).to receive(:[]).with('SM_LOG_LEVEL').and_call_original
+      allow(ENV).to receive(:[]).with('HTTP_PROXY').and_call_original
+      allow(ENV).to receive(:[]).with('http_proxy').and_call_original
+      allow(ENV).to receive(:[]).with('GL_REPOSITORY').and_return('project-test')
+      allow(ENV).to receive(:[]).with('GL_PROJECT_PATH').and_return('project/path')
     end
 
     context 'update phase' do
@@ -71,10 +81,6 @@ RSpec.describe SecureMirror, '#unit' do
       end
 
       before do
-        allow(ENV).to receive(:[]).with('SM_LOG_LEVEL').and_call_original
-        allow(ENV).to receive(:[]).with('HTTP_PROXY').and_call_original
-        allow(ENV).to receive(:[]).with('http_proxy').and_call_original
-        allow(ENV).to receive(:[]).with('GL_REPOSITORY').and_return('project-test')
         allow(SecureMirror).to receive(:gitlab_shell_config).and_return({'gitlab_url' => 'http://test.gitlab.com'})
 
         stub_request(:get, "http://test.gitlab.com/api/v4/projects/test").
@@ -97,6 +103,21 @@ RSpec.describe SecureMirror, '#unit' do
       it 'returns a success code' do
         expect(SecureMirror
           .evaluate_changes('pre-receive', 'gitlab', config_file: config_filename, git_config_file: git_config_file)
+        ).to eq (SecureMirror::Codes::OK)
+      end
+
+      it 'unsupported git config encountered' do
+        expect(SecureMirror
+                 .evaluate_changes('pre-receive', 'gitlab', config_file: config_filename, git_config_file: unsupported_config)
+        ).to eq (SecureMirror::Codes::GENERAL_ERROR)
+      end
+
+      it 'skip all evaluation due to evaluate_prefixes.project_paths' do
+        allow(ENV).to receive(:[]).with('GL_PROJECT_PATH').and_return('group/project')
+
+        # Using unsupported_config will ensure a general error if evaluation is not skipped.
+        expect(SecureMirror
+                 .evaluate_changes('pre-receive', 'gitlab', config_file: config_prefixes_filename, git_config_file: unsupported_config)
         ).to eq (SecureMirror::Codes::OK)
       end
     end
