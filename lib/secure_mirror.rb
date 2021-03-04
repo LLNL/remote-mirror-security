@@ -101,9 +101,19 @@ module SecureMirror
     raise(StandardError, 'Unable to determine if repo is a mirror')
   end
 
-  def self.evaluate?(repo, phase, platform, token)
+  # Based upon the potential evaluate_prefixes_only configuration, identify if evaluate should be skipped.
+  def self.skip_prefix?(prefixes)
+    return false if prefixes.nil? || prefixes.dig(:project_paths).to_a.empty?
+    gl_project_path = ENV['GL_PROJECT_PATH']
+    raise(StandardError, 'GL_PROJECT_PATH undefined') unless gl_project_path
+    return gl_project_path.start_with?(*prefixes.dig(:project_paths))
+  end
+
+  def self.evaluate?(repo, phase, platform, config)
+    return false if skip_prefix?(config.dig(:evaluate_prefixes_only))
+
     case phase
-    when 'pre-receive' then cache_for_platform(repo, platform, token)
+    when 'pre-receive' then cache_for_platform(repo, platform, config[:mirror_check_token])
     when 'update' then mirrored?
     when 'post-receive' then remove_mirrored_status
     end
@@ -116,8 +126,7 @@ module SecureMirror
     config = JSON.parse(File.read(config_file), symbolize_names: true)
     logger = SecureMirror.init_logger(config)
     repo = GitRepo.new(git_config_file)
-    return SecureMirror::Codes::OK unless evaluate?(repo, phase, platform,
-                                                    config[:mirror_check_token])
+    return SecureMirror::Codes::OK unless evaluate?(repo, phase, platform, config)
 
     setup = Setup.new(config, repo, logger)
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
