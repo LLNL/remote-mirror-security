@@ -29,7 +29,7 @@ module SecureMirror
   def self.init_logger(config)
     log_filename = config[:log_file]
     setup_log_dir(log_filename)
-    log_file = File.open(log_filename, 'w')
+    log_file = File.open(log_filename, 'a')
     level = ENV['SM_LOG_LEVEL'] || config[:log_level] || Logger::INFO
     Logger.new(log_file, level: level)
   end
