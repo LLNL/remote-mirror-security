@@ -1,4 +1,5 @@
 {
+    "gitlab_url": "http://test.gitlab.com",
     "log_file": "/tmp/mirror.log",
     "log_level": "INFO",
     "cache": {

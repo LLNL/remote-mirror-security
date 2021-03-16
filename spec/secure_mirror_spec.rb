@@ -81,8 +81,6 @@ RSpec.describe SecureMirror, '#unit' do
       end
 
       before do
-        allow(SecureMirror).to receive(:gitlab_shell_config).and_return({'gitlab_url' => 'http://test.gitlab.com'})
-
         stub_request(:get, "http://test.gitlab.com/api/v4/projects/test").
           with(headers: gitlab_headers).
           to_return { |request| { body: {'mirror' => true }.to_json } }

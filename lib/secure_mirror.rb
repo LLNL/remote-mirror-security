@@ -41,32 +41,15 @@ module SecureMirror
     ClientNotFound,
     ClientGenericError
   ].freeze
-  
-  def self.gitlab_shell_path
-    omnibus_path = '/opt/gitlab/embedded/service/gitlab-shell'
-    source_path = '/home/git/gitlab-shell'
-    return omnibus_path if File.exist?(omnibus_path)
 
-    source_path
-  end
-
-  def self.gitlab_shell_config
-    YAML.load_file(File.join(gitlab_shell_path, 'config.yml'))
-  end
-
-  def self.gitlab_api_url
-    base = gitlab_shell_config['gitlab_url'] || 'http://localhost'
-    "#{base}/api/v4"
-  end
-
-  def self.mirrored_in_gitlab?(repo, token)
+  def self.mirrored_in_gitlab?(gitlab_url, repo, token)
     return false unless repo.remote?
 
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
     project = gl_repository.sub('project-', '')
-    url = "#{gitlab_api_url}/projects/#{project}"
+    url = "#{gitlab_url}/api/v4/projects/#{project}"
     headers = { 'PRIVATE-TOKEN': token }
     resp = SecureMirror.http_get(url, headers: headers)
 
@@ -94,9 +77,10 @@ module SecureMirror
     mirrored
   end
 
-  def self.cache_for_platform(repo, platform, token)
+  def self.cache_for_platform(repo, platform, config)
+    token = config[:mirror_check_token]
     remove_mirrored_status
-    mirrored_status = mirrored_in_gitlab?(repo, token)
+    mirrored_status = mirrored_in_gitlab?(config[:gitlab_url], repo, token)
     return cache_mirrored_status(mirrored_status) if platform == 'gitlab'
     raise(StandardError, 'Unable to determine if repo is a mirror')
   end
@@ -113,7 +97,7 @@ module SecureMirror
     return false if skip_prefix?(config.dig(:evaluate_prefixes_only))
 
     case phase
-    when 'pre-receive' then cache_for_platform(repo, platform, config[:mirror_check_token])
+    when 'pre-receive' then cache_for_platform(repo, platform, config)
     when 'update' then mirrored?
     when 'post-receive' then remove_mirrored_status
     end
