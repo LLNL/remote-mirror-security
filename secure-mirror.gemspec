@@ -6,8 +6,10 @@ require 'octokit/version'
 
 Gem::Specification.new do |spec|
   spec.authors = ['Thomas Mendoza']
+  spec.bindir = 'bin'
   spec.description = 'Test the security of a remote mirror from a git hook'
   spec.email = ['mendoza33@llnl.gov']
+  spec.executables << 'secure-mirror'
   spec.homepage = 'https://github.com/LLNL/remote-mirror-security'
   spec.add_development_dependency 'bundler', '>= 1', '< 3'
   spec.add_development_dependency 'rspec', '~> 3.7', '>= 3.7.1'
