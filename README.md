@@ -64,6 +64,19 @@ exit SecureMirror.evaluate_changes(
 )
 ```
 
+Starting in version `0.3.0`, this gem includes a script `secure-mirror` which can automatically setup or teardown the necessary hooks.
+
+```bash
+# create the hooks
+secure-mirror --enable
+
+# the hook prefix and config file locations are configurable
+secure-mirror --enable --prefix /path/to/git/hook/root --config /path/to/mirror/config.json
+
+# to remove all installed hooks
+secure-mirror --disable
+```
+
 # Release
 
 This code is released under the MIT License. For more details see the LICENSE File.
