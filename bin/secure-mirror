@@ -17,6 +17,7 @@ OptionParser.new do |opt|
   opt.on('-c', '--config CONFIG') { |o| options[:config] = o }
   opt.on('-p', '--gitlab-shell-prefix PREFIX') { |o| options[:prefix] = o }
   opt.on('-d', '--disable') { options[:enable] = false }
+  opt.on('-e', '--enable') { options[:enable] = true }
 end.parse!
 
 hooks = STAGES.map do |s|
