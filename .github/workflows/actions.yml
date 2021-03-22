@@ -1,4 +1,4 @@
-name: LLNL Remote Secuirty Testing
+name: LLNL Remote Security Testing
 
 on: [push, pull_request]
 
