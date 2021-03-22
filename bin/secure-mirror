@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'optparse'
+require 'fileutils'
+
+STAGES = %w[pre-receive update post-receive].freeze
+
+options = {
+  enable: true,
+  config: '/etc/gitlab/mirror-config.json',
+  prefix: '/opt/gitlab/embedded/service/gitlab-shell'
+}
+
+OptionParser.new do |opt|
+  opt.on('-c', '--config CONFIG') { |o| options[:config] = o }
+  opt.on('-p', '--gitlab-shell-prefix PREFIX') { |o| options[:prefix] = o }
+  opt.on('-d', '--disable') { options[:enable] = false }
+end.parse!
+
+hooks = STAGES.map do |s|
+  hook_dir = "#{options[:prefix]}/hooks/#{s}.d"
+  [s, hook_dir, "#{hook_dir}/hook"]
+end
+
+unless options[:enable]
+  existing_hooks = hooks.map { |_, _, f| f }.select { |f| FileTest.exist?(f) }
+  FileUtils.rm_f(existing_hooks)
+  exit 0
+end
+
+hooks.each do |stage, hook_dir, hook_file|
+  hook = <<~HOOK
+    #!/usr/bin/env ruby
+
+    require 'secure_mirror'
+
+    exit SecureMirror.evaluate_changes(
+      '#{stage}',
+      'gitlab',
+      config_file: '#{options[:config]}'
+    )
+  HOOK
+  FileUtils.mkdir_p(hook_dir)
+  File.open(hook_file, 'w') { |f| f.write(hook) }
+  FileUtils.chmod(0o755, hook_file)
+end
