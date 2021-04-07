@@ -31,7 +31,22 @@ module SecureMirror
     setup_log_dir(log_filename)
     log_file = File.open(log_filename, 'a')
     level = ENV['SM_LOG_LEVEL'] || config[:log_level] || Logger::INFO
-    Logger.new(log_file, level: level)
+    logger = Logger.new(log_file, level: level)
+
+    logger.formatter = proc do |severity, time, _, msg|
+      {
+        level: severity,
+        timestamp: time.to_s,
+        gl_id: ENV['GL_ID'],
+        gl_project_path: ENV['GL_PROJECT_PATH'],
+        gl_protocol: ENV['GL_PROTOCOL'],
+        gl_repository: ENV['GL_REPOSITORY'],
+        gl_username: ENV['GL_USERNAME'],
+        message: msg
+      }.to_json + $/
+    end
+
+    return logger
   end
 
   def self.http_get(url, headers: {}, options: {})
