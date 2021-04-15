@@ -7,26 +7,44 @@ require 'fileutils'
 
 STAGES = %w[pre-receive update post-receive].freeze
 
-options = {
+# rubocop:disable Style/MutableConstant
+OPTIONS = {
   enable: true,
+  status: false,
   config: '/etc/gitlab/mirror-config.json',
   prefix: '/opt/gitlab/embedded/service/gitlab-shell'
 }
+# rubocop:enable Style/MutableConstant
 
 OptionParser.new do |opt|
-  opt.on('-c', '--config CONFIG') { |o| options[:config] = o }
-  opt.on('-p', '--gitlab-shell-prefix PREFIX') { |o| options[:prefix] = o }
-  opt.on('-d', '--disable') { options[:enable] = false }
-  opt.on('-e', '--enable') { options[:enable] = true }
+  opt.on('-c', '--config CONFIG') { |o| OPTIONS[:config] = o }
+  opt.on('-p', '--gitlab-shell-prefix PREFIX') { |o| OPTIONS[:prefix] = o }
+  opt.on('-d', '--disable') { OPTIONS[:enable] = false }
+  opt.on('-e', '--enable') { OPTIONS[:enable] = true }
+  opt.on('-s', '--status') { OPTIONS[:status] = true }
 end.parse!
 
-hooks = STAGES.map do |s|
-  hook_dir = "#{options[:prefix]}/hooks/#{s}.d"
-  [s, hook_dir, "#{hook_dir}/hook"]
+def hooks
+  STAGES.map do |s|
+    hook_dir = "#{OPTIONS[:prefix]}/hooks/#{s}.d"
+    [s, hook_dir, "#{hook_dir}/hook"]
+  end
 end
 
-unless options[:enable]
-  existing_hooks = hooks.map { |_, _, f| f }.select { |f| FileTest.exist?(f) }
+def existing_hooks
+  hooks.map { |_, _, f| f }.select { |f| FileTest.exist?(f) }
+end
+
+def status
+  existing_hooks.empty? ? 'disabled' : 'enabled'
+end
+
+if OPTIONS[:status]
+  p status
+  exit 0
+end
+
+unless OPTIONS[:enable]
   FileUtils.rm_f(existing_hooks)
   exit 0
 end
@@ -40,7 +58,7 @@ hooks.each do |stage, hook_dir, hook_file|
     exit SecureMirror.evaluate_changes(
       '#{stage}',
       'gitlab',
-      config_file: '#{options[:config]}'
+      config_file: '#{OPTIONS[:config]}'
     )
   HOOK
   FileUtils.mkdir_p(hook_dir)
