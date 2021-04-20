@@ -40,6 +40,9 @@ RSpec.describe SecureMirror, '#unit' do
       allow(ENV).to receive(:[]).with('http_proxy').and_call_original
       allow(ENV).to receive(:[]).with('GL_REPOSITORY').and_return('project-test')
       allow(ENV).to receive(:[]).with('GL_PROJECT_PATH').and_return('project/path')
+      allow(ENV).to receive(:[]).with('GL_ID').and_return('12345')
+      allow(ENV).to receive(:[]).with('GL_PROTOCOL').and_return('protocol')
+      allow(ENV).to receive(:[]).with('GL_USERNAME').and_return('username')
     end
 
     context 'update phase' do
