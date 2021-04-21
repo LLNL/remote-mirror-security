@@ -19,8 +19,7 @@ RSpec.describe SecureMirror::Setup, '#unit' do
   include FakeFS::SpecHelpers
 
   let(:config) do
-    JSON.parse(File.read(config_filename),
-                         symbolize_names: true)
+    JSON.parse(File.read(config_filename), symbolize_names: true)
   end
   let(:config_filename) { __dir__ + '/fixtures/config.json' }
   let(:config_repo) { __dir__ + '/fixtures/config' }
@@ -47,6 +46,16 @@ RSpec.describe SecureMirror::Setup, '#unit' do
   context 'client setup' do
     it 'sets up and returns a client based on config (github)' do
       expect(setup.client).to be
+    end
+  end
+
+  context 'client setup with an unsupported config' do
+    let(:config_repo) { __dir__ + '/fixtures/unsupported-config' }
+    let(:repo) { SecureMirror::GitRepo.new(config_repo) }
+    let(:setup) { SecureMirror::Setup.new(config, repo, logger) }
+
+    it 'does not create a client for an unsupported config' do
+      expect(setup.client).not_to be
     end
   end
 end
