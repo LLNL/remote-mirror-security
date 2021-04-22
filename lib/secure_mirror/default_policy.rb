@@ -16,6 +16,10 @@
 module SecureMirror
   # defines a policy for mirror security to enforce
   class DefaultPolicy < Policy
+    def validate!
+      raise(StandardError, 'DefaultPolicy requires a non-nil client') unless @client
+    end
+
     def pre_receive
       # make calls here so that they are cached before update
       org_members
