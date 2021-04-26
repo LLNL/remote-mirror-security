@@ -22,7 +22,11 @@ module SecureMirror
       @client = client
       @repo = repo
       @logger = logger
+
+      validate!
     end
+
+    def validate!; end
 
     def pre_receive
       @logger.debug(format('evaluating %<phase>s', phase: @phase))

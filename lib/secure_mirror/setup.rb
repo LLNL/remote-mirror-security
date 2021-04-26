@@ -28,24 +28,24 @@ module SecureMirror
                              config: @config[:repo_types][:github])
     end
 
-    def caching_client(client)
-      conf = @config[:cache]
+    def enable_caching(client)
+      return unless client
+
+      cache = @config[:cache]
+      return client unless cache && cache[:enable]
+
       CachingMirrorClient.new(client,
-                              cache_dir: conf[:dir],
-                              default_expiration: conf[:default_expiration])
+                              cache_dir: cache[:dir],
+                              default_expiration: cache[:default_expiration])
     end
 
     def client
-      case @repo.url.downcase
-      when /github/
-        client = github_client
-      else
-        msg = "unsupported mirror type: #{@repo.url}"
-        raise(StandardError, msg)
-      end
-      return client unless @config[:cache][:enable]
-
-      caching_client(client)
+      enable_caching(
+        case @repo.url.downcase
+        when /github/
+          github_client
+        end
+      )
     end
 
     def policy_class

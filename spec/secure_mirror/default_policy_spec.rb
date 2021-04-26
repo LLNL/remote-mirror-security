@@ -75,6 +75,16 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
   end
   let(:phase) { 'update' }
 
+  describe '#creation' do
+    context 'initialize' do
+      it 'raises an error when client is nil' do
+        expect do
+          SecureMirror::DefaultPolicy.new(config, phase, nil, repo, logger)
+        end.to raise_error StandardError
+      end
+    end
+  end
+
   describe '#collabs_trusted?' do
     context 'when collaborators include untrusted org members' do
       let(:collaborators) { org_members }
@@ -109,12 +119,12 @@ RSpec.describe SecureMirror::DefaultPolicy, '#unit' do
       signoff_bodies = policy.signoff_bodies
       expect(signoff_bodies).to be_a(Hash)
     end
-  
+
     it 'should be case insensitive' do
       signoff_message = config_signoff_bodies[0]
       capitalized_signoff_message = signoff_message.upcase
-      expect(policy.signoff?(signoff_message)).
-        to eq(policy.signoff?(capitalized_signoff_message))
+      expect(policy.signoff?(signoff_message))
+        .to eq(policy.signoff?(capitalized_signoff_message))
     end
 
     it 'returns true when the message is a signoff' do
