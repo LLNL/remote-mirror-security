@@ -17,8 +17,8 @@ OPTIONS = {
 # rubocop:enable Style/MutableConstant
 
 OptionParser.new do |opt|
-  opt.on('-c', '--config CONFIG') { |o| OPTIONS[:config] = o }
-  opt.on('-p', '--gitlab-shell-prefix PREFIX') { |o| OPTIONS[:prefix] = o }
+  opt.on('-c', '--config CONFIG') { |o| OPTIONS[:config] = File.expand_path(o) }
+  opt.on('-p', '--prefix PREFIX') { |o| OPTIONS[:prefix] = o }
   opt.on('-d', '--disable') { OPTIONS[:enable] = false }
   opt.on('-e', '--enable') { OPTIONS[:enable] = true }
   opt.on('-s', '--status') { OPTIONS[:status] = true }
