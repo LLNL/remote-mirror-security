@@ -114,9 +114,11 @@ module SecureMirror
     setup = Setup.new(config, repo, logger)
     setup.policy_class.new(config, phase, setup.client, repo, logger).evaluate
   rescue StandardError => e
-    # if anything goes wrong, cancel the changes
-    logger.error(e)
-    logger.debug(e.backtrace.join("\n"))
+    if defined?(logger) && !logger.nil?
+      # if anything goes wrong, cancel the changes
+      logger.error(e)
+      logger.debug(e.backtrace.join("\n"))
+    end
     SecureMirror::Codes::GENERAL_ERROR
   end
 end
