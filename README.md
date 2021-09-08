@@ -71,7 +71,7 @@ Starting in version `0.3.0`, this gem includes a script `secure-mirror` which ca
 secure-mirror --enable
 
 # the hook prefix and config file locations are configurable
-secure-mirror --enable --prefix /path/to/git/hook/root --config /path/to/mirror/config.json
+secure-mirror --enable --gitlab-shell-prefix /path/to/git/hook/root --config /path/to/mirror/config.json
 
 # to remove all installed hooks
 secure-mirror --disable
