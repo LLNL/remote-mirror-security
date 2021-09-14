@@ -42,8 +42,6 @@ module SecureMirror
   ].freeze
 
   def self.mirrored_in_gitlab?(gitlab_url, repo, token)
-    return false unless repo.remote?
-
     gl_repository = ENV['GL_REPOSITORY']
     raise(StandardError, 'GL_REPOSITORY undefined') unless gl_repository
 
