@@ -101,6 +101,13 @@ RSpec.describe SecureMirror::GitHubMirrorClient, '#client' do
       expect(collabs.any? { |k, _| member_with_read[:login] == k }).to be false
     end
 
+    it 'has an empty list of collaborators when unauthorized' do
+      allow(mirror_client.client).to receive(:collabs) { raise Octokit::Forbidden }
+
+      collabs = mirror_client.collaborators(repo)
+      expect(collabs.empty?).to be true
+    end
+
     it 'gathers review comments' do
       # comments = mirror_client.review_comments(repo, sha)
       # expect(comments).to eq []

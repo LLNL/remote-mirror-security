@@ -63,9 +63,13 @@ module SecureMirror
     def collaborators(repo, client_name: '')
       wrap_with_github_error_handler(template: COLLABORATOR_ERROR, repo: repo) do
         client = client_from_name(client_name.to_sym)
-        client.collabs(repo).select { |c| write_perms?(c) }.map do |collab|
-          [collab[:login], Collaborator.new(collab[:login], false)]
-        end.to_h
+        begin
+          client.collabs(repo).select { |c| write_perms?(c) }.map do |collab|
+            [collab[:login], Collaborator.new(collab[:login], false)]
+          end.to_h
+        rescue Octokit::Forbidden
+          []
+        end
       end
     end
 
