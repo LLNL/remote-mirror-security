@@ -21,8 +21,9 @@ module SecureMirror
     def initialize(git_config_file)
       @repo_name = ''
       @git_config = nil
+      @git_config_file = git_config_file.strip
       # `pwd` for the hook will be the git directory itself
-      @git_config = IniFile.load(git_config_file)
+      @git_config = IniFile.load(@git_config_file)
       return unless @git_config
 
       @remote_cfg = @git_config.select do |k, v|
@@ -66,6 +67,14 @@ module SecureMirror
                    .gsub('.git', '')
                    .split('/')[-2..-1]
                    .join('/')
+    end
+
+    def hashed?
+      @git_config_file.split('/').include? '@hashed'
+    end
+
+    def wiki?
+      @git_config_file.split('/')[-2].include? '.wiki.'
     end
   end
 end

@@ -28,10 +28,12 @@ RSpec.describe SecureMirror, '#unit' do
     let(:config_prefixes_filename) { __dir__ + '/secure_mirror/fixtures/config_prefixes.json' }
     let(:git_config_file) { __dir__ + '/secure_mirror/fixtures/github-config' }
     let(:unsupported_config) { __dir__ + '/secure_mirror/fixtures/unsupported-config'}
+    let(:hashed_wiki_repo_dir) { 'git-data/repositories/@hashed/6b/86/6b86b273ff34fce19.wiki.git' }
 
     before do
       FakeFS::FileSystem.clone(config_filename)
       FakeFS::FileSystem.clone(git_config_file)
+      FakeFS::FileSystem.clone(unsupported_config)
       FakeFS::FileSystem.clone(config_prefixes_filename)
 
       # Establish standard environment potentially expected across tests.
@@ -120,6 +122,17 @@ RSpec.describe SecureMirror, '#unit' do
         expect(SecureMirror
                  .evaluate_changes('pre-receive', 'gitlab', config_file: config_prefixes_filename, git_config_file: unsupported_config)
         ).to eq (SecureMirror::Codes::OK)
+      end
+
+      it 'skips evaluation when the repo is a wiki managed by GitLab' do
+        Dir.mktmpdir do |dir|
+          repo_dir = File.join(dir, hashed_wiki_repo_dir)
+          FileUtils.mkdir_p repo_dir
+          FileUtils.cp(unsupported_config, repo_dir)
+          git_config = File.join(repo_dir, 'unsupported-config')
+          expect(SecureMirror.evaluate_changes('pre-receive', 'gitlab', config_file: config_prefixes_filename, git_config_file: git_config)
+          ).to eq (SecureMirror::Codes::OK)
+        end
       end
     end
 
