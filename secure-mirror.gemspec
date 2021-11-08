@@ -23,5 +23,5 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 2.3.0'
   spec.required_rubygems_version = '>= 1.3.5'
   spec.summary = 'Ruby framework for enforcing security settings on mirrors'
-  spec.version = '0.3.1'
+  spec.version = '0.3.2'
 end
