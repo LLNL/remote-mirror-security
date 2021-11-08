@@ -23,6 +23,7 @@ require 'logger'
 require 'net/http'
 require 'digest/sha2'
 require 'octokit'
+require 'pathname'
 require 'secure_mirror/policy'
 require 'secure_mirror/mirror_client'
 
@@ -107,6 +108,7 @@ module SecureMirror
     config = JSON.parse(File.read(config_file), symbolize_names: true)
     logger = SecureMirror.init_logger(config)
     repo = GitRepo.new(git_config_file)
+    return SecureMirror::Codes::OK if repo.hashed? && repo.wiki?
     return SecureMirror::Codes::OK unless evaluate?(repo, phase, platform, config)
 
     setup = Setup.new(config, repo, logger)

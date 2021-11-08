@@ -38,6 +38,7 @@ require 'date'
 require 'ostruct'
 require 'logger'
 require 'fileutils'
+require 'tmpdir'
 require 'webmock/rspec'
 require 'fakefs/spec_helpers'
 
